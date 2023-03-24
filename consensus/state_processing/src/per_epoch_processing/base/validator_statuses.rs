@@ -21,8 +21,10 @@ macro_rules! set_self_if_other_is_true {
 pub struct InclusionInfo {
     /// The distance between the attestation slot and the slot that attestation was included in a
     /// block.
+    /// 在attestation slot被提出，到attestation被包含到一个block中，之间的distance
     pub delay: u64,
     /// The index of the proposer at the slot where the attestation was included.
+    /// 在attestation被包含的slot的proposer的索引
     pub proposer_index: usize,
 }
 
@@ -63,6 +65,7 @@ pub struct ValidatorStatus {
     pub current_epoch_effective_balance: u64,
 
     /// True if the validator had an attestation included in the _current_ epoch.
+    /// true，如果validator有一个attestation包含在当前的epoch
     pub is_current_epoch_attester: bool,
     /// True if the validator's beacon block root attestation for the first slot of the _current_
     /// epoch matches the block root known to the state.

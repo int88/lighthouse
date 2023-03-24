@@ -68,6 +68,7 @@ impl HandleProvider {
 }
 
 /// A wrapper over a runtime handle which can spawn async and blocking tasks.
+/// 一个wrapper，对于runtime handle的封装，可以产生async和blocking任务
 #[derive(Clone)]
 pub struct TaskExecutor {
     /// The handle to the runtime on which tasks are spawned

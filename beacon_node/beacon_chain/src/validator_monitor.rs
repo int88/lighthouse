@@ -30,6 +30,8 @@ const TOTAL_LABEL: &str = "total";
 
 /// The validator monitor collects per-epoch data about each monitored validator. Historical data
 /// will be kept around for `HISTORIC_EPOCHS` before it is pruned.
+/// validator monitor收集每个epoch的data，对于每个monitored validator，历史数据会被保留大概
+/// `HISTORICAL_EPOCHS`，在它被清理之前
 pub const HISTORIC_EPOCHS: usize = 10;
 
 /// Once the validator monitor reaches this number of validators it will stop
@@ -45,6 +47,7 @@ pub enum Error {
 }
 
 /// Contains data pertaining to one validator for one epoch.
+/// 包含了在一个epoch中和一个validator相关的数据
 #[derive(Default)]
 pub struct EpochSummary {
     /*
@@ -57,8 +60,10 @@ pub struct EpochSummary {
     /// The number of times a validators attestation was seen in an aggregate.
     pub attestation_aggregate_inclusions: usize,
     /// The number of times a validators attestation was seen in a block.
+    /// 一个validators attestation在一个block中看到的次数
     pub attestation_block_inclusions: usize,
     /// The minimum observed inclusion distance for an attestation for this epoch..
+    /// 在这个epoch中，观察到的最少的inclusion distance，对于一个attestation
     pub attestation_min_block_inclusion_distance: Option<Slot>,
     /*
      * Blocks with a slot in the current epoch.
@@ -109,6 +114,7 @@ pub struct EpochSummary {
      * Other validator info helpful for the UI.
      */
     /// The total balance of the validator.
+    /// validator的total balance
     pub total_balance: Option<u64>,
 }
 
@@ -117,6 +123,9 @@ impl EpochSummary {
     ///
     /// - It is `None`.
     /// - `new` is greater than its current value.
+    /// 更新`current`如果：
+    /// - 这是`Node`
+    /// - `new`比当前的值更大
     fn update_if_lt<T: Ord>(current: &mut Option<T>, new: T) {
         if let Some(ref mut current) = current {
             if new < *current {
@@ -160,8 +169,10 @@ impl EpochSummary {
         self.sync_signature_contribution_inclusions += 1;
     }
 
+    // 注册attestation block registration
     pub fn register_attestation_block_inclusion(&mut self, inclusion_distance: Slot) {
         self.attestation_block_inclusions += 1;
+        // 更新attestation min block inclusion distance
         Self::update_if_lt(
             &mut self.attestation_min_block_inclusion_distance,
             inclusion_distance,
@@ -228,12 +239,14 @@ impl ValidatorMetrics {
 }
 
 /// A validator that is being monitored by the `ValidatorMonitor`.
+/// 一个被`ValidatorMonitor`监控的validator
 pub struct MonitoredValidator {
     /// A human-readable identifier for the validator.
     pub id: String,
     /// The validator index in the state.
     pub index: Option<u64>,
     /// A history of the validator over time.
+    /// validator的历史，随着时间迁移
     pub summaries: RwLock<SummaryMap>,
     /// Validator metrics to be exposed over the HTTP API.
     pub metrics: RwLock<ValidatorMetrics>,
@@ -259,11 +272,14 @@ impl MonitoredValidator {
     }
 
     /// Returns minimum inclusion distance for the given epoch as recorded by the validator monitor.
+    ///  返回最小的inclusion distance，对于给定的epoch，记录在validator monitor中
     ///
     /// Note: this value may be different from the one obtained from epoch summary
     /// as the value recorded by the validator monitor ignores skip slots.
+    /// 注意：这个值可能和从epoch summary中获取的值不同，因为validator记录的值忽略了skip slots
     fn min_inclusion_distance(&self, epoch: &Epoch) -> Option<u64> {
         let summaries = self.summaries.read();
+        // 获取某个epoch的summary
         summaries.get(epoch).and_then(|summary| {
             summary
                 .attestation_min_block_inclusion_distance
@@ -291,8 +307,11 @@ impl MonitoredValidator {
         func(summaries.entry(epoch).or_default());
 
         // Prune
+        // 清理summaries
         while summaries.len() > HISTORIC_EPOCHS {
+            // 找到min，然后移除
             if let Some(key) = summaries.iter().map(|(epoch, _)| *epoch).min() {
+                // 从summaries中移除
                 summaries.remove(&key);
             }
         }
@@ -320,12 +339,15 @@ impl MonitoredValidator {
 
 /// Holds a collection of `MonitoredValidator` and is notified about a variety of events on the P2P
 /// network, HTTP API and `BeaconChain`.
+/// 维护一系列的`MonitoredValidator`并且被通知一系列的事件，关于P2P network，HTTP API以及`BeaconChain`
 ///
 /// If any of the events pertain to a `MonitoredValidator`, additional logging and metrics will be
 /// performed.
+/// 如果任何和一个`MonitoredValidator`相关的事件发生，额外的日志以及metrics会被执行
 ///
 /// The intention of this struct is to provide users with more logging and Prometheus metrics around
 /// validators that they are interested in.
+/// 这个结构的目的是为了给用户提供更多的logging以及Prometheus metrics，对于他们感兴趣的validators
 pub struct ValidatorMonitor<T> {
     /// The validators that require additional monitoring.
     validators: HashMap<PublicKeyBytes, MonitoredValidator>,
@@ -349,6 +371,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
         individual_tracking_threshold: usize,
         log: Logger,
     ) -> Self {
+        // 初始化ValidatorMonitor
         let mut s = Self {
             validators: <_>::default(),
             indices: <_>::default(),
@@ -391,8 +414,10 @@ impl<T: EthSpec> ValidatorMonitor<T> {
 
     /// Reads information from the given `state`. The `state` *must* be valid (i.e, able to be
     /// imported).
+    /// 从给定的`state`读取信息，`state`必须是合法的（例如，能够被导入）
     pub fn process_valid_state(&mut self, current_epoch: Epoch, state: &BeaconState<T>) {
         // Add any new validator indices.
+        // 添加任何新的validator indices
         state
             .validators()
             .iter()
@@ -407,6 +432,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
             });
 
         // Update metrics for individual validators.
+        // 更新单个validators的metrics
         for monitored_validator in self.validators.values() {
             if let Some(i) = monitored_validator.index {
                 monitored_validator.touch_epoch_summary(current_epoch);
@@ -414,6 +440,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
                 let i = i as usize;
 
                 // Cache relevant validator info.
+                // 缓存相关的validator信息
                 if let Some(balance) = state.balances().get(i) {
                     monitored_validator.with_epoch_summary(current_epoch, |summary| {
                         summary.register_validator_total_balance(*balance)
@@ -421,6 +448,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
                 }
 
                 // Only log the per-validator metrics if it's enabled.
+                // 只有在使能的时候才记录每个validator的metrics
                 if !self.individual_tracking() {
                     continue;
                 }
@@ -429,6 +457,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
 
                 if let Some(balance) = state.balances().get(i) {
                     metrics::set_int_gauge(
+                        // 设置monitor balance
                         &metrics::VALIDATOR_MONITOR_BALANCE_GWEI,
                         &[id],
                         *balance as i64,
@@ -437,6 +466,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
 
                 if let Some(validator) = state.validators().get(i) {
                     metrics::set_int_gauge(
+                        // 设置effective balance
                         &metrics::VALIDATOR_MONITOR_EFFECTIVE_BALANCE_GWEI,
                         &[id],
                         u64_to_i64(validator.effective_balance),
@@ -552,6 +582,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
                 }
 
                 // Store some metrics directly to be re-exposed on the HTTP API.
+                // 存储一些metrics，直接在HTTP API上re-exposed
                 let mut validator_metrics = monitored_validator.metrics.write();
                 if previous_epoch_matched_any {
                     validator_metrics.increment_hits();
@@ -665,6 +696,8 @@ impl<T: EthSpec> ValidatorMonitor<T> {
 
                 // Get the minimum value among the validator monitor observed inclusion distance
                 // and the epoch summary inclusion distance.
+                // 获取最小的值，在validator monitor观察到的inclusion distance以及epoch summary
+                // inclusion distance
                 // The inclusion data is not retained in the epoch summary post Altair.
                 let min_inclusion_distance = min_opt(
                     monitored_validator.min_inclusion_distance(&prev_epoch),
@@ -678,6 +711,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
                         if self.individual_tracking() {
                             debug!(
                                 self.log,
+                                // 潜在的、次优的inclusion delay
                                 "Potential sub-optimal inclusion delay";
                                 "optimal" => spec.min_attestation_inclusion_delay,
                                 "delay" => inclusion_delay,
@@ -691,6 +725,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
                         metrics::set_int_gauge(
                             &metrics::VALIDATOR_MONITOR_PREV_EPOCH_ON_CHAIN_INCLUSION_DISTANCE,
                             &[id],
+                            // 设置inclusion delay
                             inclusion_delay as i64,
                         );
                     }
@@ -1108,9 +1143,11 @@ impl<T: EthSpec> ValidatorMonitor<T> {
     }
 
     /// Register that the `indexed_attestation` was included in a *valid* `BeaconBlock`.
+    /// 注册`indexed_attestation`已经包含在合法的`BeaconBlock`中
     /// `parent_slot` is the slot corresponding to the parent of the beacon block in which
     /// the attestation was included.
     /// We use the parent slot instead of block slot to ignore skip slots when calculating inclusion distance.
+    /// 我们使用parent slot，而不是block slot来忽略skip slots，当计算inclusion distance时
     ///
     /// Note: Blocks that get orphaned will skew the inclusion distance calculation.
     pub fn register_attestation_in_block(
@@ -1123,12 +1160,14 @@ impl<T: EthSpec> ValidatorMonitor<T> {
         // Best effort inclusion distance which ignores skip slots between the parent
         // and the current block. Skipped slots between the attestation slot and the parent
         // slot are still counted for simplicity's sake.
+        // Best effor inclusion distance，忽略skip slots，在parent以及当前的block之间
         let inclusion_distance = parent_slot.saturating_sub(data.slot) + 1;
 
         let delay = inclusion_distance - spec.min_attestation_inclusion_delay;
         let epoch = data.slot.epoch(T::slots_per_epoch());
 
         indexed_attestation.attesting_indices.iter().for_each(|i| {
+            // 获取对应的validator
             if let Some(validator) = self.get_validator(*i) {
                 let id = &validator.id;
 
@@ -1148,6 +1187,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
 
                     info!(
                         self.log,
+                        // attestation包含在一个block
                         "Attestation included in block";
                         "head" => ?data.beacon_block_root,
                         "index" => %data.index,
@@ -1546,6 +1586,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
     /// Scrape `self` for metrics.
     ///
     /// Should be called whenever Prometheus is scraping Lighthouse.
+    /// 当Prometheus在scraping Lighthouse的时候被调用
     pub fn scrape_metrics<S: SlotClock>(&self, slot_clock: &S, spec: &ChainSpec) {
         metrics::set_gauge(
             &metrics::VALIDATOR_MONITOR_VALIDATORS_TOTAL,
@@ -1589,6 +1630,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
                         });
                     }
                     if self.individual_tracking() {
+                        // 设置gauge
                         metrics::set_gauge_vec(
                             &metrics::VALIDATOR_MONITOR_PREV_EPOCH_ATTESTATIONS_TOTAL,
                             &[id],

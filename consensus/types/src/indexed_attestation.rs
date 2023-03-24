@@ -29,6 +29,7 @@ use tree_hash_derive::TreeHash;
 #[arbitrary(bound = "T: EthSpec")]
 pub struct IndexedAttestation<T: EthSpec> {
     /// Lists validator registry indices, not committee indices.
+    /// 一系列的validator registry indices，而不是committee indices
     #[serde(with = "quoted_variable_list_u64")]
     pub attesting_indices: VariableList<u64, T::MaxValidatorsPerCommittee>,
     pub data: AttestationData,

@@ -312,6 +312,7 @@ pub type BeaconStore<T> = Arc<
 
 /// Represents the "Beacon Chain" component of Ethereum 2.0. Allows import of blocks and block
 /// operations and chooses a canonical head.
+/// 代表Ethereum 2.0中的"Beacon Chain"组件，允许导入blocks以及block operations以及选择一个canonical head
 pub struct BeaconChain<T: BeaconChainTypes> {
     pub spec: ChainSpec,
     /// Configuration for `BeaconChain` runtime behaviour.
@@ -2785,9 +2786,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Accepts a fully-verified block and imports it into the chain without performing any
     /// additional verification.
+    /// 接受一个完全校验过的block并且将它导入chain，而不执行任何额外的校验
     ///
     /// An error is returned if the block was unable to be imported. It may be partially imported
     /// (i.e., this function is not atomic).
+    /// 一个error被返回，如果block不能被导入，它可能被临时导入
     #[allow(clippy::too_many_arguments)]
     fn import_block(
         &self,
@@ -3138,6 +3141,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Process a block for the validator monitor, including all its constituent messages.
+    /// 为validator monitor处理一个block，包含所有的组成消息
     fn import_block_update_validator_monitor(
         &self,
         block: BeaconBlockRef<T::EthSpec>,
@@ -3196,6 +3200,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Attestations.
         for attestation in block.body().attestations() {
+            // 遍历attestations
             let indexed_attestation = match ctxt.get_indexed_attestation(state, attestation) {
                 Ok(indexed) => indexed,
                 Err(e) => {
@@ -3206,6 +3211,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         "attestation_slot" => attestation.data.slot,
                         "error" => ?e,
                     );
+                    // 获取attestation失败，直接continue
                     continue;
                 }
             };

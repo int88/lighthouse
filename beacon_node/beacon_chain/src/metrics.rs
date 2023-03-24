@@ -593,6 +593,7 @@ lazy_static! {
     pub static ref VALIDATOR_MONITOR_PREV_EPOCH_ON_CHAIN_INCLUSION_DISTANCE: Result<IntGaugeVec> =
         try_create_int_gauge_vec(
             "validator_monitor_prev_epoch_on_chain_inclusion_distance",
+            // 在上一个epoch的处理过程中，计算的平均的attestation inclusion
             "The attestation inclusion distance calculated during per epoch processing",
             &["validator"]
         );

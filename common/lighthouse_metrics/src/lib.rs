@@ -238,6 +238,7 @@ pub fn get_int_counter(
 }
 
 /// Increments the `int_counter_vec` with the given `name`.
+/// 添加给定`name`的`int_counter_vec`
 pub fn inc_counter_vec(int_counter_vec: &Result<IntCounterVec>, name: &[&str]) {
     if let Some(counter) = get_int_counter(int_counter_vec, name) {
         counter.inc()

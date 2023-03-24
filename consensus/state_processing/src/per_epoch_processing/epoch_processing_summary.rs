@@ -7,6 +7,7 @@ use std::sync::Arc;
 use types::{EthSpec, SyncCommittee};
 
 /// Provides a summary of validator participation during the epoch.
+/// 提供一个validator参与的summary，在epoch中
 #[derive(PartialEq, Debug)]
 pub enum EpochProcessingSummary<T: EthSpec> {
     Base {
@@ -299,6 +300,7 @@ impl<T: EthSpec> EpochProcessingSummary<T> {
     }
 
     /// Returns information about the inclusion distance for `val_index` for the previous epoch.
+    /// 返回inclusion distance的信息，在上一个epoch中，对于`val_index`
     ///
     /// ## Differences between Base and Altair
     ///
@@ -313,6 +315,7 @@ impl<T: EthSpec> EpochProcessingSummary<T> {
             EpochProcessingSummary::Base { statuses, .. } => {
                 statuses.get(val_index).and_then(|s| s.inclusion_info)
             }
+            // 对于Altair，总是返回None
             EpochProcessingSummary::Altair { .. } => None,
         }
     }

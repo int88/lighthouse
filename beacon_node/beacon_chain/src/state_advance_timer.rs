@@ -266,6 +266,8 @@ async fn state_advance_timer<T: BeaconChainTypes>(
 /// Reads the `snapshot_cache` from the `beacon_chain` and attempts to take a clone of the
 /// `BeaconState` of the head block. If it obtains this clone, the state will be advanced a single
 /// slot then placed back in the `snapshot_cache` to be used for block verification.
+/// 从`beacon_chain`中读取`snapshot_cache`并且试着获取head block的`BeaconState`的一个clone，如果获取了
+/// 这个clone，state会往前移动一个slot，之后放在`snapshot_cache`用于block verification
 ///
 /// See the module-level documentation for rationale.
 fn advance_head<T: BeaconChainTypes>(
