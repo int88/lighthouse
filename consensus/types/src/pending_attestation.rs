@@ -7,6 +7,7 @@ use test_random_derive::TestRandom;
 use tree_hash_derive::TreeHash;
 
 /// An attestation that has been included in the state but not yet fully processed.
+/// 一个已经被包含进state的attestations，但是没有被完全处理
 ///
 /// Spec v0.12.1
 #[derive(

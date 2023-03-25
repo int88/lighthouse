@@ -320,6 +320,7 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// Persistent storage for blocks, states, etc. Typically an on-disk store, such as LevelDB.
     pub store: BeaconStore<T>,
     /// Used for spawning async and blocking tasks.
+    /// 用于生成async以及blocking tasks
     pub task_executor: TaskExecutor,
     /// Database migrator for running background maintenance on the store.
     pub store_migrator: BackgroundMigrator<T::EthSpec, T::HotStore, T::ColdStore>,
@@ -378,9 +379,12 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// Provides information from the Ethereum 1 (PoW) chain.
     pub eth1_chain: Option<Eth1Chain<T::Eth1Chain, T::EthSpec>>,
     /// Interfaces with the execution client.
+    /// execution clien的接口
     pub execution_layer: Option<ExecutionLayer<T::EthSpec>>,
     /// Stores information about the canonical head and finalized/justified checkpoints of the
     /// chain. Also contains the fork choice struct, for computing the canonical head.
+    /// 存储canonical head的信息以及chain的finalized/justified checkpoints，同时包含fork choice结构
+    /// 用于计算canonical head
     pub canonical_head: CanonicalHead<T>,
     /// The root of the genesis block.
     pub genesis_block_root: Hash256,
@@ -427,6 +431,7 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// Optional slasher.
     pub slasher: Option<Arc<Slasher<T::EthSpec>>>,
     /// Provides monitoring of a set of explicitly defined validators.
+    /// 提供对于一系列显式定义的validators的监控
     pub validator_monitor: RwLock<ValidatorMonitor<T::EthSpec>>,
 }
 
@@ -2617,6 +2622,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Returns `Ok(block_root)` if the given `unverified_block` was successfully verified and
     /// imported into the chain.
+    /// 返回`Ok(block_root)`如果给定的`unverified_block`被成功校验并且导入到chain中
     ///
     /// Items that implement `IntoExecutionPendingBlock` include:
     ///
@@ -2644,6 +2650,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let block = unverified_block.block().clone();
 
         // A small closure to group the verification and import errors.
+        // 一个小的closure来将校验打包以及import errors
         let chain = self.clone();
         let import_block = async move {
             let execution_pending = unverified_block.into_execution_pending_block(
@@ -2657,8 +2664,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         };
 
         // Verify and import the block.
+        // 校验并且导入block
         match import_block.await {
             // The block was successfully verified and imported. Yay.
+            // block已经成功被校验并且导入
             Ok(block_root) => {
                 trace!(
                     self.log,
@@ -2704,6 +2713,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Accepts a fully-verified block and imports it into the chain without performing any
     /// additional verification.
+    /// 接受一个完全校验的block并且导入它到chain，而不执行任何额外的校验
     ///
     /// An error is returned if the block was unable to be imported. It may be partially imported
     /// (i.e., this function is not atomic).
@@ -2859,6 +2869,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .seconds_from_current_slot_start(self.spec.seconds_per_slot)
                 .ok_or(Error::UnableToComputeTimeAtSlot)?;
 
+            // 加入fork choice
             fork_choice
                 .on_block(
                     current_slot,
@@ -2928,6 +2939,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // ---------------------------- BLOCK PROBABLY ATTESTABLE ----------------------------------
         // Most blocks are now capable of being attested to thanks to the `early_attester_cache`
         // cache above. Resume non-essential processing.
+        // 大多数blocks能够被处理，感谢上面的`early_attester_cache`，恢复非必要的处理
         //
         // It is important NOT to return errors here before the database commit, because the block
         // has already been added to fork choice and the database would be left in an inconsistent
@@ -3052,6 +3064,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         metrics::inc_counter(&metrics::BLOCK_PROCESSING_SUCCESSES);
 
         // Update the deposit contract cache.
+        // 更新deposit的contract cache
         self.import_block_update_deposit_contract_finalization(
             block,
             block_root,
@@ -3152,6 +3165,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ) {
         // Only register blocks with the validator monitor when the block is sufficiently close to
         // the current slot.
+        // 只有在block离当前的slot足够近的时候，才注册blocks到validator monitor
         if VALIDATOR_MONITOR_HISTORIC_EPOCHS as u64 * T::EthSpec::slots_per_epoch()
             + block.slot().as_u64()
             < current_slot.as_u64()
@@ -3160,6 +3174,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Allow the validator monitor to learn about a new valid state.
+        // 允许validator monitor学习关于新的合法的state
         self.validator_monitor
             .write()
             .process_valid_state(current_slot.epoch(T::EthSpec::slots_per_epoch()), state);
@@ -3167,6 +3182,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let validator_monitor = self.validator_monitor.read();
 
         // Sync aggregate.
+        // 处理sync aggregate
         if let Ok(sync_aggregate) = block.body().sync_aggregate() {
             // `SyncCommittee` for the sync_aggregate should correspond to the duty slot
             let duty_epoch = block.slot().epoch(T::EthSpec::slots_per_epoch());
@@ -3223,14 +3239,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         for exit in block.body().voluntary_exits() {
+            // 注册block voluntary exit            
             validator_monitor.register_block_voluntary_exit(&exit.message)
         }
 
         for slashing in block.body().attester_slashings() {
+            // 处理attester slashing
             validator_monitor.register_block_attester_slashing(slashing)
         }
 
         for slashing in block.body().proposer_slashings() {
+            // 处理proposer slashing
             validator_monitor.register_block_proposer_slashing(slashing)
         }
     }

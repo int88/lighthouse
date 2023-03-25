@@ -69,8 +69,10 @@ pub struct ValidatorStatus {
     pub is_current_epoch_attester: bool,
     /// True if the validator's beacon block root attestation for the first slot of the _current_
     /// epoch matches the block root known to the state.
+    /// 返回true，如果validator的beacon block root attestation，当前epoch的第一个slot
     pub is_current_epoch_target_attester: bool,
     /// True if the validator had an attestation included in the _previous_ epoch.
+    /// 返回true，如果validator有一个attestation包含在之前的epoch
     pub is_previous_epoch_attester: bool,
     /// True if the validator's beacon block root attestation for the first slot of the _previous_
     /// epoch matches the block root known to the state.
@@ -81,11 +83,13 @@ pub struct ValidatorStatus {
 
     /// Information used to reward the block producer of this validators earliest-included
     /// attestation.
+    /// 用于奖励这个validator的最早被包含的attestation的block producer的信息
     pub inclusion_info: Option<InclusionInfo>,
 }
 
 impl ValidatorStatus {
     /// Accepts some `other` `ValidatorStatus` and updates `self` if required.
+    /// 接收一些其他的`ValidatorStatus`并且更新`self`，如果需要的话
     ///
     /// Will never set one of the `bool` fields to `false`, it will only set it to `true` if other
     /// contains a `true` field.
@@ -233,6 +237,7 @@ impl ValidatorStatuses {
 
     /// Process some attestations from the given `state` updating the `statuses` and
     /// `total_balances` fields.
+    /// 处理一些attestations，从给定的`state`，更新`statuses`以及`total_balances`等字段
     ///
     /// Spec v0.12.1
     pub fn process_attestations<T: EthSpec>(
@@ -241,6 +246,7 @@ impl ValidatorStatuses {
     ) -> Result<(), BeaconStateError> {
         let base_state = state.as_base()?;
         for a in base_state
+            // 之前epoch的attestations
             .previous_epoch_attestations
             .iter()
             .chain(base_state.current_epoch_attestations.iter())
@@ -253,17 +259,22 @@ impl ValidatorStatuses {
 
             // Profile this attestation, updating the total balances and generating an
             // `ValidatorStatus` object that applies to all participants in the attestation.
+            // 描述这个attestation，更新total balances并且生成一个`ValidatorStatus`对象
+            // 应用到这个attestation的所有参与者
             if a.data.target.epoch == state.current_epoch() {
+                // 当前的epoch
                 status.is_current_epoch_attester = true;
 
                 if target_matches_epoch_start_block(a, state, state.current_epoch())? {
                     status.is_current_epoch_target_attester = true;
                 }
             } else if a.data.target.epoch == state.previous_epoch() {
+                // 之前的epoch
                 status.is_previous_epoch_attester = true;
 
                 // The inclusion delay and proposer index are only required for previous epoch
                 // attesters.
+                // inclusion delay和proposer index只有在之前epoch的attesters中需要
                 status.inclusion_info = Some(InclusionInfo {
                     delay: a.inclusion_delay,
                     proposer_index: a.proposer_index as usize,
@@ -279,6 +290,7 @@ impl ValidatorStatuses {
             }
 
             // Loop through the participating validator indices and update the status vec.
+            // 遍历参与的validator索引并且更新status
             for validator_index in attesting_indices {
                 self.statuses
                     .get_mut(validator_index as usize)

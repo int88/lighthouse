@@ -11,6 +11,7 @@ use state_processing::per_epoch_processing::{
 use types::{BeaconState, ChainSpec, Epoch, EthSpec};
 
 /// Returns the state in the last slot of `epoch`.
+/// 返回`epoch`的最后一个slot的state
 fn end_of_epoch_state<T: BeaconChainTypes>(
     epoch: Epoch,
     chain: &BeaconChain<T>,
@@ -23,14 +24,17 @@ fn end_of_epoch_state<T: BeaconChainTypes>(
 }
 
 /// Generate an `EpochProcessingSummary` for `state`.
+/// 为`state`生成`EpochProcessingSummary`
 ///
 /// ## Notes
 ///
 /// Will mutate `state`, transitioning it to the next epoch.
+/// 会修改`state`，转移到下一个epoch
 fn get_epoch_processing_summary<T: EthSpec>(
     state: &mut BeaconState<T>,
     spec: &ChainSpec,
 ) -> Result<EpochProcessingSummary<T>, warp::reject::Rejection> {
+    // 处理epoch
     process_epoch(state, spec)
         .map_err(|e| warp_utils::reject::custom_server_error(format!("{:?}", e)))
 }
@@ -41,6 +45,7 @@ fn convert_cache_error(error: ParticipationCacheError) -> warp::reject::Rejectio
 
 /// Returns information about *all validators* (i.e., global) and how they performed during a given
 /// epoch.
+/// 返回关于所有的validators的信息并且他们在一个给定的epoch如何执行
 pub fn global_validator_inclusion_data<T: BeaconChainTypes>(
     epoch: Epoch,
     chain: &BeaconChain<T>,

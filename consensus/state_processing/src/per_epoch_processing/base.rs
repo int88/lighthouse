@@ -15,6 +15,7 @@ pub mod participation_record_updates;
 pub mod rewards_and_penalties;
 pub mod validator_statuses;
 
+// 对每个epoch进行处理
 pub fn process_epoch<T: EthSpec>(
     state: &mut BeaconState<T>,
     spec: &ChainSpec,
@@ -25,6 +26,7 @@ pub fn process_epoch<T: EthSpec>(
     state.build_committee_cache(RelativeEpoch::Next, spec)?;
 
     // Load the struct we use to assign validators into sets based on their participation.
+    // 加载结构，我们用来assign validators到sets中，基于他们的参与度
     //
     // E.g., attestation in the previous epoch, attested to the head, etc.
     let mut validator_statuses = ValidatorStatuses::new(state, spec)?;
@@ -33,6 +35,7 @@ pub fn process_epoch<T: EthSpec>(
     // Justification and finalization.
     let justification_and_finalization_state =
         process_justification_and_finalization(state, &validator_statuses.total_balances, spec)?;
+    // 将变更应用到state
     justification_and_finalization_state.apply_changes_to_state(state);
 
     // Rewards and Penalties.
@@ -67,8 +70,10 @@ pub fn process_epoch<T: EthSpec>(
     process_participation_record_updates(state)?;
 
     // Rotate the epoch caches to suit the epoch transition.
+    // 轮转epoch caches来匹配epoch transition
     state.advance_caches(spec)?;
 
+    // 返回epoch processing summary
     Ok(EpochProcessingSummary::Base {
         total_balances: validator_statuses.total_balances,
         statuses: validator_statuses.statuses,

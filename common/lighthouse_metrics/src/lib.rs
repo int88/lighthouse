@@ -211,6 +211,7 @@ pub fn set_gauge_entry<P: Atomic>(
 
 /// If `int_gauge_vec.is_ok()`, sets the gauge with the given `name` to the given `value`
 /// otherwise returns false.
+/// 如果`int_gauge_vec.is_ok()`的话，设置给定`name`的gauge到给定`value`，否则返回false
 pub fn set_int_gauge(int_gauge_vec: &Result<IntGaugeVec>, name: &[&str], value: i64) -> bool {
     if let Ok(int_gauge_vec) = int_gauge_vec {
         int_gauge_vec

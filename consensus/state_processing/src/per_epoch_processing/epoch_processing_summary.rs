@@ -10,8 +10,10 @@ use types::{EthSpec, SyncCommittee};
 /// 提供一个validator参与的summary，在epoch中
 #[derive(PartialEq, Debug)]
 pub enum EpochProcessingSummary<T: EthSpec> {
+    // 分为Base和Altair的EpochProcessingSummary
     Base {
         total_balances: TotalBalances,
+        // validator status的vector
         statuses: Vec<ValidatorStatus>,
     },
     Altair {
@@ -213,6 +215,7 @@ impl<T: EthSpec> EpochProcessingSummary<T> {
 
     /// Returns `true` if `val_index` had a target-matching attestation included on chain in the
     /// previous epoch.
+    /// 返回`true`，如果`val_index`有一个target匹配的attestation，包含在chain中，在之前的epoch
     ///
     /// ## Notes
     ///

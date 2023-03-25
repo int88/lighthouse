@@ -106,6 +106,7 @@ pub trait EthSpec:
      * Derived values (set these CAREFULLY)
      */
     /// The length of the `{previous,current}_epoch_attestations` lists.
+    /// `{previous,current}_epoch_attestations` list的长度
     ///
     /// Must be set to `MaxAttestations * SlotsPerEpoch`
     // NOTE: we could safely instantiate these by using type-level arithmetic, but doing

@@ -628,6 +628,7 @@ where
     }
 
     /// Add `block` to the fork choice DAG.
+    /// 添加`block`到fork choice DAG
     ///
     /// - `block_root` is the root of `block.
     /// - The root of `state` matches `block.state_root`.

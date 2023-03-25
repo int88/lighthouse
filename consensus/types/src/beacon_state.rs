@@ -250,6 +250,7 @@ where
     pub slashings: FixedVector<u64, T::EpochsPerSlashingsVector>,
 
     // Attestations (genesis fork only)
+    // 一系列的attestations
     #[superstruct(only(Base))]
     pub previous_epoch_attestations: VariableList<PendingAttestation<T>, T::MaxPendingAttestations>,
     #[superstruct(only(Base))]

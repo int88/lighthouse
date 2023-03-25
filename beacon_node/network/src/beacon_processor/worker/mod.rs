@@ -15,6 +15,7 @@ pub use sync_methods::ChainSegmentProcessId;
 pub(crate) const FUTURE_SLOT_TOLERANCE: u64 = 1;
 
 /// Contains the context necessary to import blocks, attestations, etc to the beacon chain.
+/// 包含必要的上下文，用于导入blocks，attestations等到beacon chain
 pub struct Worker<T: BeaconChainTypes> {
     pub chain: Arc<BeaconChain<T>>,
     pub network_tx: mpsc::UnboundedSender<NetworkMessage<T::EthSpec>>,

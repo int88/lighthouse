@@ -25,9 +25,12 @@ pub mod tests;
 pub mod weigh_justification_and_finalization;
 
 /// Performs per-epoch processing on some BeaconState.
+/// 执行每个epoch的处理，在一些BeaconState上
 ///
 /// Mutates the given `BeaconState`, returning early if an error is encountered. If an error is
 /// returned, a state might be "half-processed" and therefore in an invalid state.
+/// 修改给定的`BeaconState`，尽早返回，如果遇到error的话，如果返回了一个error，一个state
+/// 可能会处理到一半，因此处在一个非法的状态
 pub fn process_epoch<T: EthSpec>(
     state: &mut BeaconState<T>,
     spec: &ChainSpec,

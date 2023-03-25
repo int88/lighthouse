@@ -18,6 +18,7 @@ impl From<ArithError> for Error {
 }
 
 /// Advances a state forward by one slot, performing per-epoch processing if required.
+/// 将state向前移动一个slot，执行每个epoch的处理，如果必要的话
 ///
 /// If the root of the supplied `state` is known, then it can be passed as `state_root`. If
 /// `state_root` is `None`, the root of `state` will be computed using a cached tree hash.
@@ -34,9 +35,11 @@ pub fn per_slot_processing<T: EthSpec>(
 
     cache_state(state, state_root)?;
 
+    // 只有在epoch boundary，才会返回EpochProcessingSummary
     let summary = if state.slot() > spec.genesis_slot
         && state.slot().safe_add(1)?.safe_rem(T::slots_per_epoch())? == 0
     {
+        // 处理epoch
         Some(per_epoch_processing(state, spec)?)
     } else {
         None
@@ -46,6 +49,8 @@ pub fn per_slot_processing<T: EthSpec>(
 
     // Process fork upgrades here. Note that multiple upgrades can potentially run
     // in sequence if they are scheduled in the same Epoch (common in testnets)
+    // 这里处理fork upgrades，注意，多个upgrades可用顺序执行，如果他们被调度到同一个Epoch
+    // 这在testnets中更常见
     if state.slot().safe_rem(T::slots_per_epoch())? == 0 {
         // If the Altair fork epoch is reached, perform an irregular state upgrade.
         if spec.altair_fork_epoch == Some(state.current_epoch()) {

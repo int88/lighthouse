@@ -330,10 +330,12 @@ fn advance_head<T: BeaconChainTypes>(
     };
 
     // Advance the state a single slot.
+    // 将state移动一个slot
     if let Some(summary) = per_slot_processing(&mut state, state_root, &beacon_chain.spec)
         .map_err(BeaconChainError::from)?
     {
         // Expose Prometheus metrics.
+        // 暴露Prometheus metrics
         if let Err(e) = summary.observe_metrics() {
             error!(
                 log,
@@ -344,6 +346,7 @@ fn advance_head<T: BeaconChainTypes>(
         }
 
         // Only notify the validator monitor for recent blocks.
+        // 只有最近的blocks，才通知validator monitor
         if state.current_epoch() + VALIDATOR_MONITOR_HISTORIC_EPOCHS as u64
             >= current_slot.epoch(T::EthSpec::slots_per_epoch())
         {

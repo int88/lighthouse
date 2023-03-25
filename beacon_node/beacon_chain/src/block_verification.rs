@@ -1096,9 +1096,12 @@ impl<T: BeaconChainTypes> IntoExecutionPendingBlock<T> for Arc<SignedBeaconBlock
 impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
     /// Instantiates `Self`, a wrapper that indicates that the given `block` is fully valid. See
     /// the struct-level documentation for more information.
+    /// 实例化`Self`，一个wrapper，表明给定的`block`是完全合法的
     ///
     /// Note: this function does not verify block signatures, it assumes they are valid. Signature
     /// verification must be done upstream (e.g., via a `SignatureVerifiedBlock`
+    /// 注意：这个函数不校验block signatures，它假设它们是合法的，Signature verification必须在upsteam
+    /// 完成
     ///
     /// Returns an error if the block is invalid, or if the block was unable to be verified.
     pub fn from_signature_verified_components(
@@ -1310,6 +1313,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
 
             if let Some(summary) = per_slot_processing(&mut state, Some(state_root), &chain.spec)? {
                 // Expose Prometheus metrics.
+                // 暴露prometheus metrics
                 if let Err(e) = summary.observe_metrics() {
                     error!(
                         chain.log,
@@ -1327,8 +1331,10 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
         let state_current_epoch = state.current_epoch();
 
         // If the block is sufficiently recent, notify the validator monitor.
+        // 如果block足够近，通知validator monitor
         if let Some(slot) = chain.slot_clock.now() {
             let epoch = slot.epoch(T::EthSpec::slots_per_epoch());
+            // VALIDATOR_MONITOR_HISTORIC_EPOCHS，即10个epochs之内，就更新validator monitor
             if block_slot.epoch(T::EthSpec::slots_per_epoch())
                 + VALIDATOR_MONITOR_HISTORIC_EPOCHS as u64
                 >= epoch
@@ -1337,6 +1343,8 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
                 // Update the summaries in a separate loop to `per_slot_processing`. This protects
                 // the `validator_monitor` lock from being bounced or held for a long time whilst
                 // performing `per_slot_processing`.
+                // 更新summaries，在`per_slot_processing`的另一个loop，它防止`validator_monitor`
+                // 的lock被bounced或者持久太长时间
                 for (i, summary) in summaries.iter().enumerate() {
                     let epoch = state_current_epoch - Epoch::from(summaries.len() - i);
                     if let Err(e) =

@@ -326,6 +326,7 @@ lazy_static! {
     );
     pub static ref FORK_CHOICE_REORG_DISTANCE: Result<IntGauge> = try_create_int_gauge(
         "beacon_fork_choice_reorg_distance",
+        // 在fork choice算法中，每次reorg的distance
         "The distance of each re-org of the fork choice algorithm"
     );
     pub static ref FORK_CHOICE_REORG_COUNT_INTEROP: Result<IntCounter> = try_create_int_counter(
@@ -624,6 +625,7 @@ lazy_static! {
     pub static ref VALIDATOR_MONITOR_PREV_EPOCH_ATTESTATION_BLOCK_MIN_INCLUSION_DISTANCE: Result<IntGaugeVec> =
         try_create_int_gauge_vec(
             "validator_monitor_prev_epoch_attestation_block_min_inclusion_distance",
+            // 包含在一个block内，最小的distance
             "The minimum inclusion distance observed for the inclusion of an attestation in a block.",
             &["validator"]
         );

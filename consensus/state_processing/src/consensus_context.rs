@@ -17,6 +17,7 @@ pub struct ConsensusContext<T: EthSpec> {
     /// Block root of the block at `slot`.
     current_block_root: Option<Hash256>,
     /// Cache of indexed attestations constructed during block processing.
+    /// 缓存的indexed attestations，在block处理期间构建
     indexed_attestations:
         HashMap<(AttestationData, BitList<T::MaxValidatorsPerCommittee>), IndexedAttestation<T>>,
     _phantom: PhantomData<T>,
@@ -138,6 +139,7 @@ impl<T: EthSpec> ConsensusContext<T> {
         state: &BeaconState<T>,
         attestation: &Attestation<T>,
     ) -> Result<&IndexedAttestation<T>, BlockOperationError<AttestationInvalid>> {
+        // 将attestation data以及aggregation bits作为key
         let key = (
             attestation.data.clone(),
             attestation.aggregation_bits.clone(),
@@ -146,8 +148,10 @@ impl<T: EthSpec> ConsensusContext<T> {
         match self.indexed_attestations.entry(key) {
             Entry::Occupied(occupied) => Ok(occupied.into_mut()),
             Entry::Vacant(vacant) => {
+                // 获取committee
                 let committee =
                     state.get_beacon_committee(attestation.data.slot, attestation.data.index)?;
+                // 生成indexed attestation
                 let indexed_attestation =
                     get_indexed_attestation(committee.committee, attestation)?;
                 Ok(vacant.insert(indexed_attestation))

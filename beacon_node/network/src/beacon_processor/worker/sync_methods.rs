@@ -59,6 +59,7 @@ impl<T: BeaconChainTypes> Worker<T> {
             return;
         }
         // Check if the block is already being imported through another source
+        // 检查block是否已经通过另一个source导入了
         let handle = match duplicate_cache.check_and_insert(block_root) {
             Some(handle) => handle,
             None => {
@@ -87,6 +88,7 @@ impl<T: BeaconChainTypes> Worker<T> {
         let parent_root = block.message().parent_root();
         let result = self
             .chain
+            // 处理block
             .process_block(
                 block_root,
                 block,
@@ -98,6 +100,7 @@ impl<T: BeaconChainTypes> Worker<T> {
         metrics::inc_counter(&metrics::BEACON_PROCESSOR_RPC_BLOCK_IMPORTED_TOTAL);
 
         // RPC block imported, regardless of process type
+        // RPC block导入，不用考虑处理类型
         if let &Ok(hash) = &result {
             info!(self.log, "New RPC block received"; "slot" => slot, "hash" => %hash);
 

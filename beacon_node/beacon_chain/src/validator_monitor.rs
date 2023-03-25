@@ -52,6 +52,7 @@ pub enum Error {
 pub struct EpochSummary {
     /*
      * Attestations with a target in the current epoch.
+     * target在当前epoch的attestations
      */
     /// The number of attestations seen.
     pub attestations: usize,
@@ -297,7 +298,9 @@ impl MonitoredValidator {
     /// ## Notes
     ///
     /// - If `epoch` doesn't exist in `self.summaries`, it is created.
+    /// - 如果`epoch`在`self.summaries`中不存在 ，则它被创建
     /// - `self.summaries` may be pruned after `func` is run.
+    /// - `self.summaries`可能在`func`运行之后被删除
     fn with_epoch_summary<F>(&self, epoch: Epoch, func: F)
     where
         F: Fn(&mut EpochSummary),
@@ -350,10 +353,13 @@ impl MonitoredValidator {
 /// 这个结构的目的是为了给用户提供更多的logging以及Prometheus metrics，对于他们感兴趣的validators
 pub struct ValidatorMonitor<T> {
     /// The validators that require additional monitoring.
+    /// 需要额外监控的validators
     validators: HashMap<PublicKeyBytes, MonitoredValidator>,
     /// A map of validator index (state.validators) to a validator public key.
+    /// validator索引（state.validators）到一个validator public key的映射
     indices: HashMap<u64, PublicKeyBytes>,
     /// If true, allow the automatic registration of validators.
+    /// 如果为true，允许validators的自动注册
     auto_register: bool,
     /// Once the number of monitored validators goes above this threshold, we
     /// will stop tracking metrics/logs on a per-validator basis. This prevents
@@ -547,6 +553,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
         let mut suboptimal_inclusion = Vec::new();
 
         // We subtract two from the state of the epoch that generated these summaries.
+        // 我们从生成这些summaries的epoch减去2
         //
         // - One to account for it being the previous epoch.
         // - One to account for the state advancing an epoch whilst generating the validator
@@ -643,6 +650,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
                 }
 
                 // Indicates if any on-chain attestation hit the head.
+                // 表示是否有任何的on-chain attestation击中了head
                 if previous_epoch_matched_head {
                     self.aggregatable_metric(id, |label| {
                         metrics::inc_counter_vec(
@@ -701,7 +709,9 @@ impl<T: EthSpec> ValidatorMonitor<T> {
                 // The inclusion data is not retained in the epoch summary post Altair.
                 let min_inclusion_distance = min_opt(
                     monitored_validator.min_inclusion_distance(&prev_epoch),
+                    // summary中的delay
                     summary
+                        // 之前一个epoch的inclusion信息
                         .previous_epoch_inclusion_info(i)
                         .map(|info| info.delay),
                 );
@@ -1164,8 +1174,10 @@ impl<T: EthSpec> ValidatorMonitor<T> {
         let inclusion_distance = parent_slot.saturating_sub(data.slot) + 1;
 
         let delay = inclusion_distance - spec.min_attestation_inclusion_delay;
+        // 找到attestation对应的epoch
         let epoch = data.slot.epoch(T::slots_per_epoch());
 
+        // 遍历attestation的各个indices
         indexed_attestation.attesting_indices.iter().for_each(|i| {
             // 获取对应的validator
             if let Some(validator) = self.get_validator(*i) {
