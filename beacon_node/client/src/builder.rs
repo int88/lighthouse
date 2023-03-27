@@ -47,6 +47,8 @@ pub const ETH1_GENESIS_UPDATE_INTERVAL_MILLIS: u64 = 7_000;
 ///
 /// The builder may start some services (e.g.., libp2p, http server) immediately after they are
 /// initialized, _before_ the `self.build(..)` method has been called.
+/// builder可能会启动一些服务（例如，libp2p, http server），立即在他们初始化之后，在`self.build(..)`方法
+/// 被调用之前
 ///
 /// Types may be elided and the compiler will infer them once all required methods have been
 /// called.
@@ -126,6 +128,7 @@ where
 
     /// Initializes the `BeaconChainBuilder`. The `build_beacon_chain` method will need to be
     /// called later in order to actually instantiate the `BeaconChain`.
+    /// 实例化`BeaconChainBuilder`，这个`build_beacon_chain`方法需要在后面为调用，为了真正实例化`BeconChain`
     pub async fn beacon_chain_builder(
         mut self,
         client_genesis: ClientGenesis,
@@ -672,6 +675,7 @@ where
 
     /// Consumes the builder, returning a `Client` if all necessary components have been
     /// specified.
+    /// 消费builder，返回一个`Client`，如果所有必要的组件都已经指定了
     ///
     /// If type inference errors are being raised, see the comment on the definition of `Self`.
     #[allow(clippy::type_complexity)]
@@ -805,6 +809,7 @@ where
                 }
 
                 // Spawn a service to publish BLS to execution changes at the Capella fork.
+                // 生成一个service来公布BLS到execution changes，在Capella fork
                 if let Some(network_senders) = self.network_senders {
                     let inner_chain = beacon_chain.clone();
                     let broadcast_context =

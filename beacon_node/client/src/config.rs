@@ -19,9 +19,11 @@ pub enum ClientGenesis {
         genesis_time: u64,
     },
     /// Reads the genesis state and other persisted data from the `Store`.
+    /// 从`Store`中读取genesis state以及其他的持久化的数据
     FromStore,
     /// Connects to an eth1 node and waits until it can create the genesis state from the deposit
     /// contract.
+    /// 连接到一个eth1 node并且等待直到它可以从deposit contract创建genesis state
     #[default]
     DepositContract,
     /// Loads the genesis state from SSZ-encoded `BeaconState` bytes.

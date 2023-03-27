@@ -51,6 +51,7 @@ impl<E: EthSpec> ProductionBeaconNode<E> {
     }
 
     /// Starts a new beacon node `Client` in the given `environment`.
+    /// 在给定的`environment`启动一个新的beacon node `Client`
     ///
     /// Client behaviour is defined by the given `client_config`.
     pub async fn new(
@@ -136,6 +137,7 @@ impl<E: EthSpec> ProductionBeaconNode<E> {
         let builder = builder.system_time_slot_clock()?;
 
         // Inject the executor into the discv5 network config.
+        // 注射executor到disv5的network配置
         let discv5_executor = Discv5Executor(executor);
         client_config.network.discv5_config.executor = Some(Box::new(discv5_executor));
 

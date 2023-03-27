@@ -26,6 +26,7 @@ pub enum Domain {
 }
 
 /// Lighthouse's internal configuration struct.
+/// Lighthouse内部的配置结构
 ///
 /// Contains a mixture of "preset" and "config" values w.r.t to the EF definitions.
 #[derive(arbitrary::Arbitrary, PartialEq, Debug, Clone)]

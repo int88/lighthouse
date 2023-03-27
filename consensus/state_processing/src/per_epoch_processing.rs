@@ -36,6 +36,7 @@ pub fn process_epoch<T: EthSpec>(
     spec: &ChainSpec,
 ) -> Result<EpochProcessingSummary<T>, Error> {
     // Verify that the `BeaconState` instantiation matches the fork at `state.slot()`.
+    // 校验`BeaconState`的实例化，匹配`state.slot()`的fork
     state
         .fork_name(spec)
         .map_err(Error::InconsistentStateFork)?;

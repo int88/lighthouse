@@ -173,6 +173,7 @@ impl SingleEpochParticipationCache {
 }
 
 /// Maintains a cache to be used during `altair::process_epoch`.
+/// 维护一个cache，在`altair::process_epoch`使用
 #[derive(PartialEq, Debug)]
 pub struct ParticipationCache {
     current_epoch: Epoch,

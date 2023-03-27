@@ -69,6 +69,7 @@ pub fn global_validator_inclusion_data<T: BeaconChainTypes>(
 }
 
 /// Returns information about a single validator and how it performed during a given epoch.
+/// 返回关于一个validator的信息以及它在一个给定的epoch执行得如何
 pub fn validator_inclusion_data<T: BeaconChainTypes>(
     epoch: Epoch,
     validator_id: &ValidatorId,

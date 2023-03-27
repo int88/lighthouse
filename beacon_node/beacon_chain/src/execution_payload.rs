@@ -39,6 +39,7 @@ pub enum AllowOptimisticImport {
 /// Signal whether the execution payloads of new blocks should be
 /// immediately verified with the EL or imported optimistically without
 /// any EL communication.
+/// 通知，是否新的blocks的execution payloads应该立即被EL校验，或者乐观地导入，而不用任何EL的沟通
 #[derive(Default, Clone, Copy)]
 pub enum NotifyExecutionLayer {
     #[default]

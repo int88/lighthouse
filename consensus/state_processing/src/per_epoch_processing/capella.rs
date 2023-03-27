@@ -25,6 +25,7 @@ pub fn process_epoch<T: EthSpec>(
     state.build_committee_cache(RelativeEpoch::Next, spec)?;
 
     // Pre-compute participating indices and total balances.
+    // 预计算参与的indices以及所有的balances
     let participation_cache = ParticipationCache::new(state, spec)?;
     let sync_committee = state.current_sync_committee()?.clone();
 

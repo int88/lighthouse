@@ -45,6 +45,7 @@ pub mod base {
     use super::*;
 
     /// Validates each `Attestation` and updates the state, short-circuiting on an invalid object.
+    /// 校验每个`Attestation`并且更新state，对于错误的对象，直接短路
     ///
     /// Returns `Ok(())` if the validation and state updates completed successfully, otherwise returns
     /// an `Err` describing the invalid object or cause of failure.
@@ -56,11 +57,13 @@ pub mod base {
         spec: &ChainSpec,
     ) -> Result<(), BlockProcessingError> {
         // Ensure the previous epoch cache exists.
+        // 确保之前的epoch cache存在
         state.build_committee_cache(RelativeEpoch::Previous, spec)?;
 
         let proposer_index = ctxt.get_proposer_index(state, spec)?;
 
         // Verify and apply each attestation.
+        // 校验并且应用每个attestation
         for (i, attestation) in attestations.iter().enumerate() {
             verify_attestation_for_block_inclusion(
                 state,
@@ -71,6 +74,7 @@ pub mod base {
             )
             .map_err(|e| e.into_with_index(i))?;
 
+            // 构建pending attestation
             let pending_attestation = PendingAttestation {
                 aggregation_bits: attestation.aggregation_bits.clone(),
                 data: attestation.data.clone(),
@@ -79,11 +83,13 @@ pub mod base {
             };
 
             if attestation.data.target.epoch == state.current_epoch() {
+                // 放到current epoch attestations
                 state
                     .as_base_mut()?
                     .current_epoch_attestations
                     .push(pending_attestation)?;
             } else {
+                // 放到previous epoch attestations
                 state
                     .as_base_mut()?
                     .previous_epoch_attestations
@@ -237,6 +243,7 @@ pub fn process_attester_slashings<T: EthSpec>(
 }
 /// Wrapper function to handle calling the correct version of `process_attestations` based on
 /// the fork.
+/// 封装函数，用于调用正确版本的`process_attestations`，基于fork
 pub fn process_attestations<T: EthSpec, Payload: AbstractExecPayload<T>>(
     state: &mut BeaconState<T>,
     block_body: BeaconBlockBodyRef<T, Payload>,

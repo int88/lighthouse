@@ -1,5 +1,6 @@
 //! This module contains functions for advancing a `BeaconState` forward some number of slots
 //! without blocks (i.e., skip slots).
+//! 这个module包含了函数用于移动一个`BeaconState`，一些没有blocks的slots（例如，skip slots）
 //!
 //! These functions are not in the specification, however they're defined here to reduce code
 //! duplication and protect against some easy-to-make mistakes when performing state advances.

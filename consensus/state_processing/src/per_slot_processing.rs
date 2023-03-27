@@ -23,6 +23,8 @@ impl From<ArithError> for Error {
 /// If the root of the supplied `state` is known, then it can be passed as `state_root`. If
 /// `state_root` is `None`, the root of `state` will be computed using a cached tree hash.
 /// Providing the `state_root` makes this function several orders of magniude faster.
+/// 如果提供的state的root是已知的，它可以作为`state_root`传入，如果`state_root`是`None`，`state`
+/// 的root会使用一个缓存的tree hash被计算，提供`state_root`能让这个函数快几个数量级
 pub fn per_slot_processing<T: EthSpec>(
     state: &mut BeaconState<T>,
     state_root: Option<Hash256>,
@@ -39,12 +41,13 @@ pub fn per_slot_processing<T: EthSpec>(
     let summary = if state.slot() > spec.genesis_slot
         && state.slot().safe_add(1)?.safe_rem(T::slots_per_epoch())? == 0
     {
-        // 处理epoch
+        // 加一之后如果是epoch boundary，处理epoch
         Some(per_epoch_processing(state, spec)?)
     } else {
         None
     };
 
+    // 修改state的slot
     state.slot_mut().safe_add_assign(1)?;
 
     // Process fork upgrades here. Note that multiple upgrades can potentially run

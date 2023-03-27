@@ -1,5 +1,6 @@
 //! Provides two structs that help us filter out attestation gossip from validators that have
 //! already published attestations:
+//! 提供两个结构体，帮助我们过滤来自validators的attestation gossip，他们已经公布了attestations
 //!
 //! - `ObservedAttesters`: allows filtering unaggregated attestations from the same validator in
 //!   the same epoch.

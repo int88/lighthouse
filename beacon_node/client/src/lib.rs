@@ -19,6 +19,7 @@ pub use config::{ClientGenesis, Config as ClientConfig};
 pub use eth2_config::Eth2Config;
 
 /// The core "beacon node" client.
+/// 核心的"beacon node" client，维护了对运行services的引用
 ///
 /// Holds references to running services, cleanly shutting them down when dropped.
 pub struct Client<T: BeaconChainTypes> {

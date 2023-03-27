@@ -2633,6 +2633,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ///
     /// Returns an `Err` if the given block was invalid, or an error was encountered during
     /// verification.
+    /// 返回一个`Err`，如果给定的block是非法的，或者在校验的过程遇到一个error
     pub async fn process_block<B: IntoExecutionPendingBlock<T>>(
         self: &Arc<Self>,
         block_root: Hash256,
@@ -2647,6 +2648,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         metrics::inc_counter(&metrics::BLOCK_PROCESSING_REQUESTS);
 
         // Clone the block so we can provide it to the event handler.
+        // 克隆block，这样我们可以将它提供给event handler
         let block = unverified_block.block().clone();
 
         // A small closure to group the verification and import errors.
@@ -2677,6 +2679,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 );
 
                 // Increment the Prometheus counter for block processing successes.
+                // 增加Prometheus counter，对于成功处理block
                 metrics::inc_counter(&metrics::BLOCK_PROCESSING_SUCCESSES);
 
                 Ok(block_root)
@@ -2828,6 +2831,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         self.check_block_against_weak_subjectivity_checkpoint(block, block_root, &state)?;
 
         // If there are new validators in this block, update our pubkey cache.
+        // 如果block中有新的validators，更新我们的pubkey cache
         //
         // The only keys imported here will be ones for validators deposited in this block, because
         // the cache *must* already have been updated for the parent block when it was imported.
@@ -2843,10 +2847,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .import_new_pubkeys(&state)?;
 
         // Apply the state to the attester cache, only if it is from the previous epoch or later.
+        // 应用state到attester cache，只有在它来自之前的epoch或者之后的时候
         //
         // In a perfect scenario there should be no need to add previous-epoch states to the cache.
         // However, latency between the VC and the BN might cause the VC to produce attestations at
         // a previous slot.
+        // 在一个完美的场景下，没有必要添加之前epoch的states到cache，然而VC和BN之间的延迟，可能导致VC产生
+        // 一个之前的slot
         if state.current_epoch().saturating_add(1_u64) >= current_epoch {
             self.attester_cache
                 .maybe_cache_state(&state, block_root, &self.spec)
@@ -2888,6 +2895,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // becomes the head block. If so, apply it to the early attester cache. This will allow
         // attestations to the block without waiting for the block and state to be inserted to the
         // database.
+        // 如果block足够近，并且没有optimistically imported，检查它是否变为了head block
         //
         // Only performing this check on recent blocks avoids slowing down sync with lots of calls
         // to fork choice `get_head`.
@@ -2948,6 +2956,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // -----------------------------------------------------------------------------------------
 
         self.import_block_update_shuffling_cache(block_root, &mut state);
+        // 更新观察到的attestations
         self.import_block_observe_attestations(
             block,
             &state,
@@ -2967,6 +2976,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Store the block and its state, and execute the confirmation batch for the intermediate
         // states, which will delete their temporary flags.
+        // 存储block以及它的state，并且执行confirmation batch，对于intermediate states
         // If the write fails, revert fork choice to the version from disk, else we can
         // end up with blocks in fork choice that are missing from disk.
         // See https://github.com/sigp/lighthouse/issues/2028

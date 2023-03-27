@@ -1,4 +1,5 @@
 //! Provides a mechanism which queues work for later processing.
+//! 提供一个机制，将work加入队列，用于后续处理
 //!
 //! When the `beacon_processor::Worker` imports a block that is acceptably early (i.e., within the
 //! gossip propagation tolerance) it will send it to this queue where it will be placed in a

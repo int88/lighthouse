@@ -41,9 +41,11 @@ use std::time::Duration;
 use types::*;
 
 /// On-disk database that stores finalized states efficiently.
+/// 磁盘上的数据库，高效地存储finalized states
 ///
 /// Stores vector fields like the `block_roots` and `state_roots` separately, and only stores
 /// intermittent "restore point" states pre-finalization.
+/// 另外存储vector字段，例如`block_roots`以及`state_roots`
 #[derive(Debug)]
 pub struct HotColdDB<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> {
     /// The slot and state root at the point where the database is split between hot and cold.

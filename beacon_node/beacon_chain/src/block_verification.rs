@@ -613,6 +613,7 @@ type PayloadVerificationHandle<E> =
 
 /// A wrapper around a `SignedBeaconBlock` that indicates that this block is fully verified and
 /// ready to import into the `BeaconChain`. The validation includes:
+/// 对于`SignedBeaconBlock`的wrapper，表明这个block已经完整校验并且准备好导入到`BeaconChain`
 ///
 /// - Parent is known
 /// - Signatures
@@ -622,6 +623,8 @@ type PayloadVerificationHandle<E> =
 /// Note: a `ExecutionPendingBlock` is not _forever_ valid to be imported, it may later become invalid
 /// due to finality or some other event. A `ExecutionPendingBlock` should be imported into the
 /// `BeaconChain` immediately after it is instantiated.
+/// 注意：一个`ExecutionPendingBlock`不是永远合法能够被导入的，它可能后面变成非法的
+/// 因为finality或者一些其他事件，它可能变成非法的
 pub struct ExecutionPendingBlock<T: BeaconChainTypes> {
     pub block: Arc<SignedBeaconBlock<T::EthSpec>>,
     pub block_root: Hash256,
@@ -655,6 +658,7 @@ pub trait IntoExecutionPendingBlock<T: BeaconChainTypes>: Sized {
     }
 
     /// Convert the block to fully-verified form while producing data to aid checking slashability.
+    /// 转换block到fully-verified形式，同时生成数据来帮助检查slashability
     fn into_execution_pending_block_slashable(
         self,
         block_root: Hash256,
@@ -1115,10 +1119,12 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
         if let Some(parent) = chain
             .canonical_head
             .fork_choice_read_lock()
+            // 获取parent block
             .get_block(&block.parent_root())
         {
             // Reject any block where the parent has an invalid payload. It's impossible for a valid
             // block to descend from an invalid parent.
+            // 拒绝任何block，如果parent有一个非法的payload
             if parent.execution_status.is_invalid() {
                 return Err(BlockError::ParentExecutionPayloadInvalid {
                     parent_root: block.parent_root(),
@@ -1126,6 +1132,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
             }
         } else {
             // Reject any block if its parent is not known to fork choice.
+            // 拒绝任何的block，如果它的parent对于fork choice是未知的
             //
             // A block that is not in fork choice is either:
             //
@@ -1139,6 +1146,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
         }
 
         // Reject any block that exceeds our limit on skipped slots.
+        // 拒绝任何block，如果它们超过了skipped slots的limit
         check_block_skip_slots(chain, parent.beacon_block.slot(), block.message())?;
 
         /*
@@ -1212,6 +1220,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
         // Spawn the payload verification future as a new task, but don't wait for it to complete.
         // The `payload_verification_future` will be awaited later to ensure verification completed
         // successfully.
+        // 产生payload verification future作为一个新的task，但是不要等待它完成
         let payload_verification_handle = chain
             .task_executor
             .spawn_handle(
@@ -1222,6 +1231,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
 
         /*
          * Advance the given `parent.beacon_state` to the slot of the given `block`.
+         * 移动给定的`parent.beacon_state`到给定的block的slot
          */
 
         let catchup_timer = metrics::start_timer(&metrics::BLOCK_PROCESSING_CATCHUP_STATE);
@@ -1244,9 +1254,11 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
         //
         // It is important to note that we're using a "pre-state" here, one that has potentially
         // been advanced one slot forward from `parent.beacon_block.slot`.
+        // 这里我们使用一个`pre-state`，它已经从`parent.beacon_block.slot`移动了一个slot
         let mut state = parent.pre_state;
 
         // Perform a sanity check on the pre-state.
+        // 对pre-state做完整性检查
         let parent_slot = parent.beacon_block.slot();
         if state.slot() < parent_slot || state.slot() > parent_slot + 1 {
             return Err(BeaconChainError::BadPreState {
@@ -1264,6 +1276,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
             eth1_deposit_index: state.eth1_deposit_index(),
         };
 
+        // 中间的是skipped slots
         let distance = block.slot().as_u64().saturating_sub(state.slot().as_u64());
         for _ in 0..distance {
             let state_root = if parent.beacon_block.slot() == state.slot() {
@@ -1280,6 +1293,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
 
                 // Store the state immediately, marking it as temporary, and staging the deletion
                 // of its temporary status as part of the larger atomic operation.
+                // 立即存储state，标记为temporary
                 let txn_lock = chain.store.hot_db.begin_rw_transaction();
                 let state_already_exists =
                     chain.store.load_hot_state_summary(&state_root)?.is_some();
@@ -1293,6 +1307,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
                 } else {
                     vec![
                         if state.slot() % T::EthSpec::slots_per_epoch() == 0 {
+                            // 如果是epoch boundary，放入state
                             StoreOp::PutState(state_root, &state)
                         } else {
                             StoreOp::PutStateSummary(
@@ -1311,6 +1326,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
                 state_root
             };
 
+            // 处理slot
             if let Some(summary) = per_slot_processing(&mut state, Some(state_root), &chain.spec)? {
                 // Expose Prometheus metrics.
                 // 暴露prometheus metrics
@@ -1362,6 +1378,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
 
         /*
          * Build the committee caches on the state.
+         * 在state中构建committee caches
          */
 
         let committee_timer = metrics::start_timer(&metrics::BLOCK_PROCESSING_COMMITTEE);
@@ -1392,6 +1409,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
         /*
          * Perform `per_block_processing` on the block and state, returning early if the block is
          * invalid.
+         * 执行`per_block_processing`在block以及state，尽早返回，如果block是非法的
          */
 
         write_state(
@@ -1403,10 +1421,12 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
 
         let core_timer = metrics::start_timer(&metrics::BLOCK_PROCESSING_CORE);
 
+        // 每个block的处理
         if let Err(err) = per_block_processing(
             &mut state,
             &block,
             // Signatures were verified earlier in this function.
+            // Signatures在这个函数的早期就已经校验了
             BlockSignatureStrategy::NoVerification,
             VerifyBlockRoot::True,
             &mut consensus_context,
@@ -1424,6 +1444,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
 
         /*
          * Calculate the state root of the newly modified state
+         * 计算新的，修改后的state的state root
          */
 
         let state_root_timer = metrics::start_timer(&metrics::BLOCK_PROCESSING_STATE_ROOT);
@@ -1440,6 +1461,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
 
         /*
          * Check to ensure the state root on the block matches the one we have calculated.
+         * 校验block中的state root和我们计算的匹配
          */
 
         if block.state_root() != state_root {
@@ -1451,19 +1473,23 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
 
         /*
          * Apply the block's attestations to fork choice.
+         * 应用block的attestations到fork choice
          *
          * We're running in parallel with the payload verification at this point, so this is
          * free real estate.
+         * 这个时候我们和payload verification同时运行，因此释放真正的estate
          */
         let current_slot = chain.slot()?;
         let mut fork_choice = chain.canonical_head.fork_choice_write_lock();
 
         // Register each attester slashing in the block with fork choice.
+        // 在forkchocie中注册真正的attester slashing
         for attester_slashing in block.message().body().attester_slashings() {
             fork_choice.on_attester_slashing(attester_slashing);
         }
 
         // Register each attestation in the block with fork choice.
+        // 在fork chocie中注册block中的每个attestation
         for (i, attestation) in block.message().body().attestations().iter().enumerate() {
             let _fork_choice_attestation_timer =
                 metrics::start_timer(&metrics::FORK_CHOICE_PROCESS_ATTESTATION_TIMES);
@@ -1472,6 +1498,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
                 .get_indexed_attestation(&state, attestation)
                 .map_err(|e| BlockError::PerBlockProcessingError(e.into_with_index(i)))?;
 
+            // fork choice中应用attestations
             match fork_choice.on_attestation(
                 current_slot,
                 indexed_attestation,
@@ -1501,6 +1528,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
 
 /// Check that the count of skip slots between the block and its parent does not exceed our maximum
 /// value.
+/// 校验block和它的parent之间的skip slots没有超过限定的最大值
 ///
 /// Whilst this is not part of the specification, we include this to help prevent us from DoS
 /// attacks. In times of dire network circumstance, the user can configure the

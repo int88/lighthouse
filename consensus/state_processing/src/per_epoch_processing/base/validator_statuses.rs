@@ -183,8 +183,10 @@ impl TotalBalances {
 #[derive(Debug, Clone)]
 pub struct ValidatorStatuses {
     /// Information about each individual validator from the state's validator registry.
+    /// 关于每个validator的信息，来自state的validator registry
     pub statuses: Vec<ValidatorStatus>,
     /// Summed balances for various sets of validators.
+    /// 对于各种validators的总balances
     pub total_balances: TotalBalances,
 }
 
@@ -292,6 +294,7 @@ impl ValidatorStatuses {
             // Loop through the participating validator indices and update the status vec.
             // 遍历参与的validator索引并且更新status
             for validator_index in attesting_indices {
+                // 更新validator status
                 self.statuses
                     .get_mut(validator_index as usize)
                     .ok_or(BeaconStateError::UnknownValidator(validator_index as usize))?
@@ -300,6 +303,7 @@ impl ValidatorStatuses {
         }
 
         // Compute the total balances
+        // 计算全部的balances
         for (index, v) in self.statuses.iter().enumerate() {
             // According to the spec, we only count unslashed validators towards the totals.
             if !v.is_slashed {

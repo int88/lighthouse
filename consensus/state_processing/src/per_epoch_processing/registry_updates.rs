@@ -4,6 +4,7 @@ use safe_arith::SafeArith;
 use types::{BeaconState, ChainSpec, EthSpec, Validator};
 
 /// Performs a validator registry update, if required.
+/// 执行一个validator registry更新，如果需要的话
 ///
 /// NOTE: unchanged in Altair
 pub fn process_registry_updates<T: EthSpec>(
@@ -40,6 +41,7 @@ pub fn process_registry_updates<T: EthSpec>(
     }
 
     // Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
+    // 将合格的能够激活的validtors入队并且不要出队，在finalized epoch之前
     let activation_queue = state
         .validators()
         .iter()

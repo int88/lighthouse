@@ -83,9 +83,11 @@ pub enum VerifyBlockRoot {
 
 /// Updates the state for a new block, whilst validating that the block is valid, optionally
 /// checking the block proposer signature.
+/// 更新一个新的block的state，同时校验block是不是合法，可选地检查block proposer signature
 ///
 /// Returns `Ok(())` if the block is valid and the state was successfully updated. Otherwise
 /// returns an error describing why the block was invalid or how the function failed to execute.
+/// 返回`Ok(())`，如果block是合法的并且state被成功更新
 ///
 /// If `block_root` is `Some`, this root is used for verification of the proposer's signature. If it
 /// is `None` the signing root is computed from scratch. This parameter only exists to avoid
@@ -115,6 +117,7 @@ pub fn per_block_processing<T: EthSpec, Payload: AbstractExecPayload<T>>(
     let verify_signatures = match block_signature_strategy {
         BlockSignatureStrategy::VerifyBulk => {
             // Verify all signatures in the block at once.
+            // 一次性校验block里所有的signatures
             block_verify!(
                 BlockSignatureVerifier::verify_entire_block(
                     state,
@@ -134,6 +137,7 @@ pub fn per_block_processing<T: EthSpec, Payload: AbstractExecPayload<T>>(
         BlockSignatureStrategy::VerifyRandao => VerifySignatures::False,
     };
 
+    // 处理block header
     let proposer_index = process_block_header(
         state,
         block.temporary_block_header(),
@@ -152,6 +156,7 @@ pub fn per_block_processing<T: EthSpec, Payload: AbstractExecPayload<T>>(
         verify_signatures
     };
     // Ensure the current and previous epoch caches are built.
+    // 确认当前以及之前的epoch caches被构建
     state.build_committee_cache(RelativeEpoch::Previous, spec)?;
     state.build_committee_cache(RelativeEpoch::Current, spec)?;
 
@@ -296,6 +301,7 @@ pub fn process_randao<T: EthSpec, Payload: AbstractExecPayload<T>>(
 }
 
 /// Update the `state.eth1_data_votes` based upon the `eth1_data` provided.
+/// 基于提供的`eth1_data`更新`state.eth1_data_voutes`
 pub fn process_eth1_data<T: EthSpec>(
     state: &mut BeaconState<T>,
     eth1_data: &Eth1Data,

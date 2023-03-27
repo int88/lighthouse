@@ -11,8 +11,10 @@ use types::EthSpec;
 
 pub struct NetworkGlobals<TSpec: EthSpec> {
     /// The current local ENR.
+    /// 当前本地的ENR
     pub local_enr: RwLock<Enr>,
     /// The local peer_id.
+    /// 本地的peer id
     pub peer_id: RwLock<PeerId>,
     /// Listening multiaddrs.
     pub listen_multiaddrs: RwLock<Vec<Multiaddr>>,
@@ -21,14 +23,17 @@ pub struct NetworkGlobals<TSpec: EthSpec> {
     /// The TCP port that the libp2p service is listening on over Ipv6.
     listen_port_tcp6: Option<u16>,
     /// The collection of known peers.
+    /// 一系列已知的peers
     pub peers: RwLock<PeerDB<TSpec>>,
     // The local meta data of our node.
     pub local_metadata: RwLock<MetaData<TSpec>>,
     /// The current gossipsub topic subscriptions.
     pub gossipsub_subscriptions: RwLock<HashSet<GossipTopic>>,
     /// The current sync status of the node.
+    /// node当前的同步状态
     pub sync_state: RwLock<SyncState>,
     /// The current state of the backfill sync.
+    /// backfill sync的当前状态
     pub backfill_state: RwLock<BackFillState>,
 }
 

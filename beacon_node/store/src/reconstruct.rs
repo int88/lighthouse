@@ -83,10 +83,12 @@ where
                 };
 
                 // Advance state to slot.
+                // 移动state到slot
                 per_slot_processing(&mut state, prev_state_root.take(), &self.spec)
                     .map_err(HotColdDBError::BlockReplaySlotError)?;
 
                 // Apply block.
+                // 应用block
                 if let Some(block) = block {
                     let mut ctxt = ConsensusContext::new(block.slot())
                         .set_current_block_root(block_root)

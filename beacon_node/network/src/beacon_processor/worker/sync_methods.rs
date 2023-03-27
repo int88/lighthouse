@@ -19,6 +19,7 @@ use tokio::sync::mpsc;
 use types::{Epoch, Hash256, SignedBeaconBlock};
 
 /// Id associated to a batch processing request, either a sync batch or a parent lookup.
+/// Id关联一个batch processing request，要么是一个sync batch，要么是一个parent lookup
 #[derive(Clone, Debug, PartialEq)]
 pub enum ChainSegmentProcessId {
     /// Processing Id of a range syncing batch.
@@ -39,6 +40,7 @@ struct ChainSegmentFailed {
 
 impl<T: BeaconChainTypes> Worker<T> {
     /// Attempt to process a block received from a direct RPC request.
+    /// 试着处理一个block，从直接的RPC请求中接收到
     #[allow(clippy::too_many_arguments)]
     pub async fn process_rpc_block(
         self,
@@ -52,6 +54,7 @@ impl<T: BeaconChainTypes> Worker<T> {
     ) {
         if !should_process {
             // Sync handles these results
+            // Sync处理这些结果
             self.send_sync_message(SyncMessage::BlockProcessed {
                 process_type,
                 result: crate::sync::manager::BlockProcessResult::Ignored,
@@ -70,6 +73,7 @@ impl<T: BeaconChainTypes> Worker<T> {
                     "block_root" => %block_root,
                 );
                 // Send message to work reprocess queue to retry the block
+                // 发送message到work reprocess queue来重试这个block
                 let reprocess_msg = ReprocessQueueMessage::RpcBlock(QueuedRpcBlock {
                     block_root,
                     block: block.clone(),
@@ -102,9 +106,11 @@ impl<T: BeaconChainTypes> Worker<T> {
         // RPC block imported, regardless of process type
         // RPC block导入，不用考虑处理类型
         if let &Ok(hash) = &result {
+            // 接收到一个新的block
             info!(self.log, "New RPC block received"; "slot" => slot, "hash" => %hash);
 
             // Trigger processing for work referencing this block.
+            // 触发处理，对于那些引用这个block的work
             let reprocess_msg = ReprocessQueueMessage::BlockImported {
                 block_root: hash,
                 parent_root,
@@ -125,17 +131,20 @@ impl<T: BeaconChainTypes> Worker<T> {
             }
         }
         // Sync handles these results
+        // Sync处理这些结果
         self.send_sync_message(SyncMessage::BlockProcessed {
             process_type,
             result: result.into(),
         });
 
         // Drop the handle to remove the entry from the cache
+        // 从cache中移除这些entry
         drop(handle);
     }
 
     /// Attempt to import the chain segment (`blocks`) to the beacon chain, informing the sync
     /// thread if more blocks are needed to process it.
+    /// 试着导入chain segment（`blocks`）到beacon chain，通知sync thread，如果需要更多的blocks进行处理
     pub async fn process_chain_segment(
         &self,
         sync_type: ChainSegmentProcessId,
@@ -144,6 +153,7 @@ impl<T: BeaconChainTypes> Worker<T> {
     ) {
         let result = match sync_type {
             // this a request from the range sync
+            // 这是一个来自range sync的请求
             ChainSegmentProcessId::RangeBatchId(chain_id, epoch, count_unrealized) => {
                 let start_slot = downloaded_blocks.first().map(|b| b.slot().as_u64());
                 let end_slot = downloaded_blocks.last().map(|b| b.slot().as_u64());
@@ -189,6 +199,7 @@ impl<T: BeaconChainTypes> Worker<T> {
                 }
             }
             // this a request from the Backfill sync
+            // 这是一个来自Backfill的sync
             ChainSegmentProcessId::BackSyncBatchId(epoch) => {
                 let start_slot = downloaded_blocks.first().map(|b| b.slot().as_u64());
                 let end_slot = downloaded_blocks.last().map(|b| b.slot().as_u64());
@@ -224,6 +235,7 @@ impl<T: BeaconChainTypes> Worker<T> {
                 }
             }
             // this is a parent lookup request from the sync manager
+            // 这是一个来自sync manager的parent lookup request
             ChainSegmentProcessId::ParentLookup(chain_head) => {
                 debug!(
                     self.log, "Processing parent lookup";
@@ -264,6 +276,7 @@ impl<T: BeaconChainTypes> Worker<T> {
     }
 
     /// Helper function to process blocks batches which only consumes the chain and blocks to process.
+    /// 帮助函数用来批量处理blocks，只消费chain和blocks进行处理
     async fn process_blocks<'a>(
         &self,
         downloaded_blocks: impl Iterator<Item = &'a Arc<SignedBeaconBlock<T::EthSpec>>>,

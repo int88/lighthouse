@@ -641,11 +641,13 @@ where
     ///
     /// It only approximates the specification since it does not run the `state_transition` check.
     /// That should have already been called upstream and it's too expensive to call again.
+    /// 这里只是近似了实现，因为它没有运行`state_transition`检查，它应该在upstream被调用并且再调用一次太昂贵了
     ///
     /// ## Notes:
     ///
     /// The supplied block **must** pass the `state_transition` function as it will not be run
     /// here.
+    /// 提供的block必须通过了`state_transition`函数，因为它不在这里运行
     #[allow(clippy::too_many_arguments)]
     pub fn on_block<Payload: AbstractExecPayload<E>>(
         &mut self,
@@ -1030,6 +1032,7 @@ where
 
     /// Register `attestation` with the fork choice DAG so that it may influence future calls to
     /// `Self::get_head`.
+    /// 注册`attestation`到fork choice DAG，这样它会影响后续对`Self::get_head`的调用
     ///
     /// ## Specification
     ///

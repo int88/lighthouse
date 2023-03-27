@@ -21,6 +21,7 @@ pub fn process_epoch<T: EthSpec>(
     spec: &ChainSpec,
 ) -> Result<EpochProcessingSummary<T>, Error> {
     // Ensure the committee caches are built.
+    // 确保committee caches构建完成
     state.build_committee_cache(RelativeEpoch::Previous, spec)?;
     state.build_committee_cache(RelativeEpoch::Current, spec)?;
     state.build_committee_cache(RelativeEpoch::Next, spec)?;
@@ -39,6 +40,7 @@ pub fn process_epoch<T: EthSpec>(
     justification_and_finalization_state.apply_changes_to_state(state);
 
     // Rewards and Penalties.
+    // 处理奖罚
     process_rewards_and_penalties(state, &mut validator_statuses, spec)?;
 
     // Registry Updates.
@@ -67,6 +69,7 @@ pub fn process_epoch<T: EthSpec>(
     process_historical_roots_update(state)?;
 
     // Rotate current/previous epoch attestations
+    // 轮转当前以及之前的的epoch attestations
     process_participation_record_updates(state)?;
 
     // Rotate the epoch caches to suit the epoch transition.

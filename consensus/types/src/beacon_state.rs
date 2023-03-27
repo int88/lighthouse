@@ -215,6 +215,7 @@ where
     #[superstruct(getter(copy))]
     pub genesis_validators_root: Hash256,
     #[superstruct(getter(copy))]
+    // 当前处于的slot
     pub slot: Slot,
     #[superstruct(getter(copy))]
     pub fork: Fork,

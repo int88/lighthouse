@@ -103,6 +103,7 @@ pub fn spawn_state_advance_timer<T: BeaconChainTypes>(
 }
 
 /// Provides the timer described in the module-level documentation.
+/// 提供了timer，在module级别的文档中描述
 async fn state_advance_timer<T: BeaconChainTypes>(
     executor: TaskExecutor,
     beacon_chain: Arc<BeaconChain<T>>,
