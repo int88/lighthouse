@@ -92,6 +92,7 @@ impl<T: EthSpec> EpochProcessingSummary<T> {
 
     /// Returns `true` if `val_index` was included in the active validator indices in the current
     /// epoch *and* the validator is not slashed.
+    /// 返回`true`，如果`val_index`包含在active validator indices，在当前的epoch并且validator没有被slashed
     ///
     /// ## Notes
     ///
@@ -112,6 +113,7 @@ impl<T: EthSpec> EpochProcessingSummary<T> {
 
     /// Returns `true` if `val_index` had a target-matching attestation included on chain in the
     /// current epoch.
+    /// 返回`true`，如果`val_index`有一个target-maching的attestation包含在chain中，在当前的epoch
     ///
     /// ## Differences between Base and Altair
     ///
@@ -308,7 +310,9 @@ impl<T: EthSpec> EpochProcessingSummary<T> {
     /// ## Differences between Base and Altair
     ///
     /// - Base: always returns `Some` if the validator had an attestation included on-chain.
+    /// - Base: 总是返回`Some`，如果validator有一个attestation包含在chain中
     /// - Altair: always returns `None`.
+    /// - Altair: 总是返回None
     ///
     /// ## Notes
     ///

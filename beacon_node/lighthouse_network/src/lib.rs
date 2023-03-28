@@ -1,7 +1,9 @@
 /// This crate contains the main link for lighthouse to rust-libp2p. It therefore re-exports
 /// all required libp2p functionality.
+/// 这个crate包含了主要的link，对于lighthouse到rust-libp2p，因此它重新暴露需要的libp2p功能
 ///
 /// This crate builds and manages the libp2p services required by the beacon node.
+/// 这个crate构建beacon node需要的libp2p服务
 #[macro_use]
 extern crate lazy_static;
 

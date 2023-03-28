@@ -1184,15 +1184,19 @@ impl From<Option<BanOperation>> for ScoreUpdateResult {
 }
 
 /// When attempting to ban a peer provides the peer manager with the operation that must be taken.
+/// 当试着屏蔽一个peer的时候，提供给peer manager，关于必须执行的操作
 pub enum BanOperation {
     /// Optionally temporarily ban this peer to prevent instantaneous reconnection.
     /// The peer manager will decide if temporary banning is required.
+    /// 临时屏蔽这个peer来防止临时的重连，peer manager会决定，是否需要临时的屏蔽
     TemporaryBan,
     // The peer is currently connected. Perform a graceful disconnect before banning at the swarm
     // level.
+    // peer当前被连接，执行一个优雅的断连，在swarm level被屏蔽的时候
     DisconnectThePeer,
     // The peer is disconnected, it has now been banned and can be banned at the swarm level. It
     // stores a collection of banned IP addresses to inform the swarm.
+    // peer已经断开，它现在已经被banned并且可以在swarm level进行屏蔽，它存储一系列的banned IP地址来通知swarm
     ReadyToBan(Vec<IpAddr>),
     // The peer is currently being disconnected, nothing to do.
     PeerDisconnecting,

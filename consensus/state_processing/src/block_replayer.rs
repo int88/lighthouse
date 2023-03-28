@@ -19,6 +19,7 @@ type PostSlotHook<'a, E, Error> = Box<
 type StateRootIterDefault<Error> = std::iter::Empty<Result<(Hash256, Slot), Error>>;
 
 /// Efficiently apply blocks to a state while configuring various parameters.
+/// 高效应用blocks到一个state，同时配置各种参数
 ///
 /// Usage follows a builder pattern.
 pub struct BlockReplayer<
@@ -162,9 +163,11 @@ where
     }
 
     /// Run a function immediately after slot processing has advanced the state to the next slot.
+    /// 立即运行一个函数，在slot processing已经移动 state到下一个slot之后
     ///
     /// The hook receives the state and a bool indicating if this state corresponds to a skipped
     /// slot (i.e. it will not have a block applied).
+    /// 这个hook接收一个state和一个bool，表示这个state对应一个skipped slot（例如，它没有一个block应用）
     pub fn post_slot_hook(mut self, hook: PostSlotHook<'a, E, Error>) -> Self {
         self.post_slot_hook = Some(hook);
         self

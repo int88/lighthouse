@@ -60,6 +60,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
     let current_epoch = chain.epoch().map_err(beacon_chain_error)?;
     if query.end_epoch >= current_epoch - 1 {
         return Err(custom_bad_request(format!(
+            // end_epoch必须小于当前epoch - 1
             "end_epoch must be less than the current epoch - 1. current: {}, end: {}",
             current_epoch, query.end_epoch
         )));
@@ -75,6 +76,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
 
     // The response size can grow exceptionally large therefore we should check that the
     // query is within permitted bounds to prevent potential OOM errors.
+    // response size可以指数级增长，因此我们需要检查query在允许的范围内，来防止潜在的OOM错误
     if (end_epoch - start_epoch).as_usize() > MAX_REQUEST_RANGE_EPOCHS {
         return Err(custom_bad_request(format!(
             "end_epoch must not exceed start_epoch by more than 100 epochs. start: {}, end: {}",
@@ -83,6 +85,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
     }
 
     // Either use the global validator set, or the specified index.
+    // 使用全局的validator set，或者特定的索引
     //
     // Does no further validation of the indices, so in the event an index has not yet been
     // activated or does not yet exist (according to the head state), it will return all fields as
@@ -101,6 +104,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
     };
 
     // Load block roots.
+    // 加载block roots
     let mut block_roots: Vec<Hash256> = chain
         .forwards_iter_block_roots_until(start_slot, end_slot)
         .map_err(beacon_chain_error)?
@@ -110,6 +114,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
     block_roots.dedup();
 
     // Load first block so we can get its parent.
+    // 加载第一个block，这样我们就能获取它的parent
     let first_block_root = block_roots.first().ok_or_else(|| {
         custom_server_error(
             "No blocks roots could be loaded. Ensure the beacon node is synced.".to_string(),
@@ -123,6 +128,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
         .map_err(beacon_chain_error)?;
 
     // Load the block of the prior slot which will be used to build the starting state.
+    // 加载prior slot的block，这会用于构建starting state
     let prior_block = chain
         .get_blinded_block(&first_block.parent_root())
         .and_then(|maybe_block| {
@@ -188,6 +194,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
     };
 
     // Initialize block replayer
+    // 初始化block replayer
     let mut replayer = BlockReplayer::new(state, spec)
         .no_state_root_iter()
         .no_signature_verification()
@@ -195,6 +202,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
         .post_slot_hook(Box::new(post_slot_hook));
 
     // Iterate through block roots in chunks to reduce load on memory.
+    // 遍历block roots到chunks，来减少内存的负载
     for block_root_chunks in block_roots.chunks(BLOCK_ROOT_CHUNK_SIZE) {
         // Load blocks from the block root chunks.
         let blocks = block_root_chunks

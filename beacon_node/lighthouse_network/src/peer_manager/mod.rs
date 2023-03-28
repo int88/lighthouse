@@ -1,4 +1,5 @@
 //! Implementation of Lighthouse's peer management system.
+//! 实现Lighthouse的peer管理系统
 
 use crate::rpc::{GoodbyeReason, MetaData, Protocol, RPCError, RPCResponseErrorCode};
 use crate::service::TARGET_SUBNET_PEERS;
@@ -67,6 +68,7 @@ pub struct PeerManager<TSpec: EthSpec> {
     /// Storage of network globals to access the `PeerDB`.
     network_globals: Arc<NetworkGlobals<TSpec>>,
     /// A queue of events that the `PeerManager` is waiting to produce.
+    /// 一个事件的队列，`PeerManager`准备产生
     events: SmallVec<[PeerManagerEvent; 16]>,
     /// A collection of inbound-connected peers awaiting to be Ping'd.
     inbound_ping_peers: HashSetDelay<PeerId>,
@@ -125,8 +127,10 @@ pub enum PeerManagerEvent {
     /// The peer should be disconnected.
     DisconnectPeer(PeerId, GoodbyeReason),
     /// Inform the behaviour to ban this peer and associated ip addresses.
+    /// 通知屏蔽这个peer以及相关的ip地址
     Banned(PeerId, Vec<IpAddr>),
     /// The peer should be unbanned with the associated ip addresses.
+    /// peer应该被解除屏蔽，对于相关的ip地址
     UnBanned(PeerId, Vec<IpAddr>),
     /// Request the behaviour to discover more peers and the amount of peers to discover.
     DiscoverPeers(usize),
@@ -217,6 +221,7 @@ impl<TSpec: EthSpec> PeerManager<TSpec> {
     /// Upon adjusting a Peer's score, there are times the peer manager must pass messages up to
     /// libp2p. This function handles the conditional logic associated with each score update
     /// result.
+    /// 调整一个Peer的score，这个函数处理条件逻辑，关于每个score的更新结果
     fn handle_score_action(
         &mut self,
         peer_id: &PeerId,
@@ -231,6 +236,10 @@ impl<TSpec: EthSpec> PeerManager<TSpec> {
                 // If these peers are behaving fine, we permit their current connections. However, if any new
                 // nodes or current nodes try to reconnect on a banned IP, they will be instantly banned
                 // and disconnected.
+                // peer已经被banned并且我们需要处理banning operation
+                // 注意：当我们ban一个peer，它的IP地址可用被banned，我们不会递归查找所有我们连接的peers
+                // 屏蔽其他使用这个IP的地址，如果这些peer行为正常，我们允许他们当前的连接，然而，如果任何新的nodes
+                // 或者当前的node试着重连一个banned IP，他们会立即被屏蔽并且断开连接
                 self.handle_ban_operation(peer_id, ban_operation, reason);
             }
             ScoreUpdateResult::Disconnect => {
@@ -255,6 +264,7 @@ impl<TSpec: EthSpec> PeerManager<TSpec> {
     }
 
     /// If a peer is being banned, this handles the banning operation.
+    /// 如果一个peer被屏蔽了，这个函数处理banning operation
     fn handle_ban_operation(
         &mut self,
         peer_id: &PeerId,
@@ -293,6 +303,7 @@ impl<TSpec: EthSpec> PeerManager<TSpec> {
                 self.temporary_banned_peers.raw_remove(peer_id);
 
                 // Inform the Swarm to ban the peer
+                // 通知swarm屏蔽这个peer
                 self.events
                     .push(PeerManagerEvent::Banned(*peer_id, banned_ips));
             }
@@ -1151,9 +1162,11 @@ impl<TSpec: EthSpec> PeerManager<TSpec> {
     }
 
     /// The Peer manager's heartbeat maintains the peer count and maintains peer reputations.
+    /// Peer manager的heartbeat，维护了peer数目并且维护peer的reputations
     ///
     /// It will request discovery queries if the peer count has not reached the desired number of
     /// overall peers, as well as the desired number of outbound-only peers.
+    /// 它会请求discovery quereis，如果peer的count没有达到期望的总的peers数目，以及期望的outbound-only peers
     ///
     /// NOTE: Discovery will only add a new query if one isn't already queued.
     fn heartbeat(&mut self) {
