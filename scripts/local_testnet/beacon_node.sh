@@ -54,4 +54,6 @@ exec lighthouse \
 	--port $network_port \
 	--http-port $http_port \
 	--disable-packet-filter \
-	--target-peers $((BN_COUNT - 1))
+	--target-peers $((BN_COUNT - 1)) \
+	--validator-monitor-auto
+        

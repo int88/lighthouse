@@ -3210,10 +3210,11 @@ pub fn serve<T: BeaconChainTypes>(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(chain_filter.clone())
+        .and(log_filter.clone())
         .and_then(
-            |request_data: ui::ValidatorMetricsRequestData, chain: Arc<BeaconChain<T>>| {
+            |request_data: ui::ValidatorMetricsRequestData, chain: Arc<BeaconChain<T>>, log: Logger| {
                 blocking_json_task(move || {
-                    ui::post_validator_monitor_metrics(request_data, chain)
+                    ui::post_validator_monitor_metrics(request_data, chain, log)
                         .map(api_types::GenericResponse::from)
                 })
             },

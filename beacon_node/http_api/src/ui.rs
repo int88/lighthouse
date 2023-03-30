@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use warp_utils::reject::beacon_chain_error;
+use slog::{crit, debug, error, info, warn, Logger};
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ValidatorCountResponse {
@@ -175,6 +176,7 @@ pub struct ValidatorMetricsResponse {
 pub fn post_validator_monitor_metrics<T: BeaconChainTypes>(
     request_data: ValidatorMetricsRequestData,
     chain: Arc<BeaconChain<T>>,
+    log: Logger,
 ) -> Result<ValidatorMetricsResponse, warp::Rejection> {
     let validator_ids = chain
         .validator_monitor
@@ -193,6 +195,14 @@ pub fn post_validator_monitor_metrics<T: BeaconChainTypes>(
     let ids = validator_ids
         .intersection(&indices)
         .collect::<HashSet<&String>>();
+
+    debug!(
+        log,
+        "validator monitor metrics";
+        "indices" => format!("{:?}", indices),
+        "validator_ids" => format!("{:?}", validator_ids),
+        "ids" => format!("{:?}", ids),
+    );
 
     let mut validators = HashMap::new();
 

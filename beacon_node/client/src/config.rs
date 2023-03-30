@@ -59,6 +59,7 @@ pub struct Config {
     /// Graffiti to be inserted everytime we create a block.
     pub graffiti: Graffiti,
     /// When true, automatically monitor validators using the HTTP API.
+    /// 当为true时，自动监控validators，使用HTTP API
     pub validator_monitor_auto: bool,
     /// A list of validator pubkeys to monitor.
     pub validator_monitor_pubkeys: Vec<PublicKeyBytes>,

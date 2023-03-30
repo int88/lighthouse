@@ -37,6 +37,7 @@ pub const HISTORIC_EPOCHS: usize = 10;
 /// Once the validator monitor reaches this number of validators it will stop
 /// tracking their metrics/logging individually in an effort to reduce
 /// Prometheus cardinality and log volume.
+/// 一旦validator monitor超过了这些validators的数目，会停止追踪metrics以及logging
 pub const DEFAULT_INDIVIDUAL_TRACKING_THRESHOLD: usize = 64;
 
 #[derive(Debug)]
@@ -365,6 +366,7 @@ pub struct ValidatorMonitor<T> {
     /// will stop tracking metrics/logs on a per-validator basis. This prevents
     /// large validator counts causing infeasibly high cardinailty for
     /// Prometheus and high log volumes.
+    /// 当监控的validators的数目高于这个阈值时，停止追踪metrics/logs，基于每个validator
     individual_tracking_threshold: usize,
     log: Logger,
     _phantom: PhantomData<T>,
@@ -395,6 +397,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
     /// Returns `true` when the validator count is sufficiently low enough to
     /// emit metrics and logs on a per-validator basis (rather than just an
     /// aggregated basis).
+    /// 返回`true`，如果validator的数目足够低，可以基于每个validator发射metrics以及logs
     fn individual_tracking(&self) -> bool {
         self.validators.len() <= self.individual_tracking_threshold
     }
