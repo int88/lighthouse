@@ -154,6 +154,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
      -> Result<(), AttestationPerformanceError> {
         // If a `summary` was not output then an epoch boundary was not crossed
         // so we move onto the next slot.
+        // 如果`summary`没有输出，那么没有跨过epoch boundary，这样我们可以移动到下一个slot
         if let Some(summary) = summary {
             for (position, i) in index_range.iter().enumerate() {
                 let index = *i as usize;
@@ -165,6 +166,8 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
                 // We are two epochs ahead since the summary is generated for
                 // `state.previous_epoch()` then `summary.is_previous_epoch_X` functions return
                 // data for the epoch before that.
+                // 我们提前两个epochs，因为summary为`state.previous_epoch()`产生，之后`summary.is_previous_epoch_X`
+                // 返回data，对于它之前的epoch
                 let epoch = state.previous_epoch().as_u64() - 1;
 
                 let is_active = summary.is_active_unslashed_in_previous_epoch(index);

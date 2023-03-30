@@ -73,6 +73,7 @@ pub struct GlobalValidatorInclusionData {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ValidatorInclusionData {
     /// True if the validator has been slashed, ever.
+    /// true，如果validator已经被slashed
     pub is_slashed: bool,
     /// True if the validator can withdraw in the current epoch.
     pub is_withdrawable_in_current_epoch: bool,
@@ -84,6 +85,7 @@ pub struct ValidatorInclusionData {
     pub current_epoch_effective_balance_gwei: u64,
     /// True if the validator's beacon block root attestation for the first slot of the _current_
     /// epoch matches the block root known to the state.
+    /// true，如果validator的beacon block root attestation，对于当前epoch的第一个slot匹配对于state已知的root
     pub is_current_epoch_target_attester: bool,
     /// True if the validator's beacon block root attestation for the first slot of the _previous_
     /// epoch matches the block root known to the state.

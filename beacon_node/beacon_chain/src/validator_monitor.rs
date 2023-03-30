@@ -566,11 +566,14 @@ impl<T: EthSpec> ValidatorMonitor<T> {
 
                 /*
                  * These metrics are reflected differently between Base and Altair.
+                 * metrics在Base和Altair之间的反映是不一样的
                  *
                  * For Base, any attestation that is included on-chain will match the source.
+                 * 对于Base，任何包含在chain中的attestation会匹配source
                  *
                  * However, in Altair, only attestations that are "timely" are registered as
                  * matching the source.
+                 * 然而，在Altair，只有及时注册的attestations才会匹配source
                  */
 
                 let previous_epoch_active = summary.is_active_unslashed_in_previous_epoch(i);
@@ -585,6 +588,8 @@ impl<T: EthSpec> ValidatorMonitor<T> {
                     // Monitored validator is not active, due to awaiting activation
                     // or being exited/withdrawn. Do not attempt to report on its
                     // attestations.
+                    // 监控的validator不是active的，由于等待activation或者正在退出/withdrawn
+                    // 不要试着报告它的attestations
                     continue;
                 }
 
@@ -677,6 +682,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
                 }
 
                 // Indicates if any on-chain attestation hit the target.
+                // 表示是否有任何on-chain的attestation击中了target
                 if previous_epoch_matched_target {
                     self.aggregatable_metric(id, |label| {
                         metrics::inc_counter_vec(
@@ -790,6 +796,8 @@ impl<T: EthSpec> ValidatorMonitor<T> {
 
         // Aggregate logging for attestation success/failures over an epoch
         // for all validators managed by the validator monitor.
+        // 对于attestation success/failures进行聚合日志，在一个epoch上，对于所有
+        // validator monitor管理的validators
         if !attestation_success.is_empty() {
             info!(
                 self.log,

@@ -96,6 +96,7 @@ pub fn validator_inclusion_data<T: BeaconChainTypes>(
     };
 
     // Obtain the validator *before* transitioning the state into the next epoch.
+    // 获取validator，在转换state到下一个epoch之前
     let validator = if let Ok(validator) = state.get_validator(validator_index) {
         validator.clone()
     } else {

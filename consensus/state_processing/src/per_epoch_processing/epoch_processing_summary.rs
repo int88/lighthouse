@@ -275,6 +275,7 @@ impl<T: EthSpec> EpochProcessingSummary<T> {
 
     /// Returns `true` if `val_index` had a source-matching attestation included on chain in the
     /// previous epoch.
+    /// 返回`true`，如果`val_index`有一个source matching的attestation包含在chain中，在之前的epoch
     ///
     /// ## Differences between Base and Altair
     ///
