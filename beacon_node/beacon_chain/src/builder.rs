@@ -60,6 +60,7 @@ where
 
 /// Builds a `BeaconChain` by either creating anew from genesis, or, resuming from an existing chain
 /// persisted to `store`.
+/// 构建一个`BeaconChain`，要么从genesis创建新的，或者从一个已经存在于`store`中的chain进行resume
 ///
 /// Types may be elided and the compiler will infer them if all necessary builder methods have been
 /// called. If type inference errors are being raised, it is likely that not all required methods
@@ -107,6 +108,7 @@ where
     TEthSpec: EthSpec + 'static,
 {
     /// Returns a new builder.
+    /// 返回一个新的builder
     ///
     /// The `_eth_spec_instance` parameter is only supplied to make concrete the `TEthSpec` trait.
     /// This should generally be either the `MinimalEthSpec` or `MainnetEthSpec` types.
@@ -222,6 +224,7 @@ where
     }
 
     /// Returns true if `self.store` contains a persisted beacon chain.
+    /// 返回true，如果`self.store`包含一个持久化的beacon chain
     pub fn store_contains_beacon_chain(&self) -> Result<bool, String> {
         let store = self
             .store
@@ -235,6 +238,7 @@ where
     }
 
     /// Attempt to load an existing chain from the builder's `Store`.
+    /// 试着从builder的`Store`加载一个已经存在的chain
     ///
     /// May initialize several components; including the op_pool and finalized checkpoints.
     pub fn resume_from_db(mut self) -> Result<Self, String> {
@@ -313,10 +317,13 @@ where
     }
 
     /// Store the genesis state & block in the DB.
+    /// 存储genesis state和block到DB中
     ///
     /// Do *not* initialize fork choice, or do anything that assumes starting from genesis.
+    /// 不要初始化fork choice，或者做任何假设从genesis开始的事
     ///
     /// Return the `BeaconSnapshot` representing genesis as well as the mutated builder.
+    /// 返回`BeaconSnapshot`表示genesis，以及mutated builder
     fn set_genesis_state(
         mut self,
         mut beacon_state: BeaconState<TEthSpec>,
@@ -367,6 +374,7 @@ where
     }
 
     /// Starts a new chain from a genesis state.
+    /// 从genesis state开始一个新的chain
     pub fn genesis_state(mut self, beacon_state: BeaconState<TEthSpec>) -> Result<Self, String> {
         let store = self.store.clone().ok_or("genesis_state requires a store")?;
 
@@ -393,6 +401,7 @@ where
     }
 
     /// Start the chain from a weak subjectivity state.
+    /// 从一个weak subjectivity状态开始chain
     pub fn weak_subjectivity_state(
         mut self,
         mut weak_subj_state: BeaconState<TEthSpec>,
@@ -408,6 +417,7 @@ where
         // Check that the given block lies on an epoch boundary. Due to the database only storing
         // full states on epoch boundaries and at restore points it would be difficult to support
         // starting from a mid-epoch state.
+        // 数据库只在epcoh boundaries存储full state
         if weak_subj_slot % TEthSpec::slots_per_epoch() != 0 {
             return Err(format!(
                 "Checkpoint block at slot {} is not aligned to epoch start. \
@@ -417,6 +427,7 @@ where
         }
 
         // Check that the block and state have consistent slots and state roots.
+        // 确认block以及state有着一致的slots以及state roots
         if weak_subj_state.slot() != weak_subj_block.slot() {
             return Err(format!(
                 "Slot of snapshot block ({}) does not match snapshot state ({})",
@@ -444,6 +455,7 @@ where
 
         // Check that the checkpoint state is for the same network as the genesis state.
         // This check doesn't do much for security but should prevent mistakes.
+        // 确认checkpoint state是在同一个network，和genesis state指定的network一致
         if weak_subj_state.genesis_validators_root() != genesis_state.genesis_validators_root() {
             return Err(format!(
                 "Snapshot state appears to be from the wrong network. Genesis validators root \
@@ -455,6 +467,7 @@ where
 
         // Set the store's split point *before* storing genesis so that genesis is stored
         // immediately in the freezer DB.
+        // 设置store的split point，在存储genesis之前，这样genesis能立即存在freezer DB中
         store.set_split(weak_subj_slot, weak_subj_state_root);
         let (_, updated_builder) = self.set_genesis_state(genesis_state)?;
         self = updated_builder;
@@ -589,6 +602,7 @@ where
     }
 
     /// Consumes `self`, returning a `BeaconChain` if all required parameters have been supplied.
+    /// 消费`self`，返回一个`BeaconChain`，如果所有需要的参数已经被提供
     ///
     /// An error will be returned at runtime if all required parameters have not been configured.
     ///
@@ -695,6 +709,7 @@ where
 
         // Perform a check to ensure that the finalization points of the head and fork choice are
         // consistent.
+        // 执行一个检查，来确保head以及fork choice的finalized points是一致的
         //
         // This is a sanity check to detect database corruption.
         let fc_finalized = fork_choice.finalized_checkpoint();
@@ -763,6 +778,7 @@ where
         let canonical_head = CanonicalHead::new(fork_choice, Arc::new(head_snapshot));
         let shuffling_cache_size = self.chain_config.shuffling_cache_size;
 
+        // 初始化beacon chain
         let beacon_chain = BeaconChain {
             spec: self.spec,
             config: self.chain_config,
@@ -867,6 +883,7 @@ where
 
         info!(
             log,
+            // beacon chain初始化完成
             "Beacon chain initialized";
             "head_state" => format!("{}", head.beacon_state_root()),
             "head_block" => format!("{}", head.beacon_block_root),
@@ -879,6 +896,7 @@ where
         }
 
         // Prune finalized execution payloads in the background.
+        // 在后台清理finalized execution payloads
         if beacon_chain.store.get_config().prune_payloads {
             let store = beacon_chain.store.clone();
             let log = log.clone();

@@ -27,6 +27,7 @@ pub type ProductionClient<E> =
     Client<Witness<SystemTimeSlotClock, CachingEth1Backend<E>, E, LevelDB<E>, LevelDB<E>>>;
 
 /// The beacon node `Client` that will be used in production.
+/// beacon node `Client`，会在生产环境中使用
 ///
 /// Generic over some `EthSpec`.
 ///
@@ -38,6 +39,7 @@ pub struct ProductionBeaconNode<E: EthSpec>(ProductionClient<E>);
 
 impl<E: EthSpec> ProductionBeaconNode<E> {
     /// Starts a new beacon node `Client` in the given `environment`.
+    /// 启动一个新的beacon node `Client`，在给定的`environment`中
     ///
     /// Identical to `start_from_client_config`, however the `client_config` is generated from the
     /// given `matches` and potentially configuration files on the local filesystem or other
@@ -81,6 +83,7 @@ impl<E: EthSpec> ProductionBeaconNode<E> {
             TimeoutRwLock::disable_timeouts()
         }
 
+        // 构建一个client builder
         let builder = ClientBuilder::new(context.eth_spec_instance.clone())
             .runtime_context(context)
             .chain_spec(spec)
@@ -88,6 +91,7 @@ impl<E: EthSpec> ProductionBeaconNode<E> {
             .disk_store(&db_path, &freezer_db_path, store_config, log.clone())?;
 
         let builder = if let Some(slasher_config) = client_config.slasher.clone() {
+            // 构建slasher
             let slasher = Arc::new(
                 Slasher::open(slasher_config, log.new(slog::o!("service" => "slasher")))
                     .map_err(|e| format!("Slasher open error: {:?}", e))?,
@@ -100,6 +104,7 @@ impl<E: EthSpec> ProductionBeaconNode<E> {
         let builder = if let Some(monitoring_config) = &mut client_config.monitoring_api {
             monitoring_config.db_path = Some(db_path);
             monitoring_config.freezer_db_path = Some(freezer_db_path);
+            // 构建monitor client
             builder.monitoring_client(monitoring_config)?
         } else {
             builder

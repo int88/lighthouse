@@ -722,6 +722,7 @@ impl BeaconNodeHttpClient {
     }
 
     /// `GET beacon/blocks` as SSZ
+    /// `GET beacon/blocks`作为SSZ
     ///
     /// Returns `Ok(None)` on a 404 error.
     pub async fn get_beacon_blocks_ssz<T: EthSpec>(

@@ -27,6 +27,7 @@ const SPEEDO_OBSERVATIONS: usize = 4;
 const BACKFILL_LOG_INTERVAL: u64 = 5;
 
 /// Spawns a notifier service which periodically logs information about the node.
+/// 生成一个notifer服务，阶段性地记录关于这个节点的日志
 pub fn spawn_notifier<T: BeaconChainTypes>(
     executor: task_executor::TaskExecutor,
     beacon_chain: Arc<BeaconChain<T>>,
@@ -40,9 +41,12 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
 
     // Keep track of sync state and reset the speedo on specific sync state changes.
     // Specifically, if we switch between a sync and a backfill sync, reset the speedo.
+    // 追踪sync state并且重置speedo，在特定的sync state changes
+    // 特别地，如果我们在sync和backfil sync之间切换，重置speedo
     let mut current_sync_state = network.sync_state();
 
     // Store info if we are required to do a backfill sync.
+    // 存储信息，如果我们需要一个backfill sync
     let original_anchor_slot = beacon_chain
         .store
         .get_anchor_info()
@@ -73,9 +77,11 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
 
         loop {
             // Run the notifier half way through each slot.
+            // 运行notifier，在每个slot一半的时候
             //
             // Keep remeasuring the offset rather than using an interval, so that we can correct
             // for system time clock adjustments.
+            // 持续重新测量offset，而不是使用一个interval，这样我们可以校准system clock adjustments
             let wait = match beacon_chain.slot_clock.duration_to_next_slot() {
                 Some(duration) => duration + slot_duration / 2,
                 None => {
@@ -87,18 +93,22 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
             sleep(wait).await;
 
             let connected_peer_count = network.connected_peers();
+            // 获取sync state
             let sync_state = network.sync_state();
 
             // Determine if we have switched syncing chains
+            // 确定是否我们更换了syncing chains
             if sync_state != current_sync_state {
                 match (current_sync_state, &sync_state) {
                     (_, SyncState::BackFillSyncing { .. }) => {
                         // We have transitioned to a backfill sync. Reset the speedo.
+                        // 我们已经转换到了backfill sync，重置speedo
                         let mut speedo = speedo.lock().await;
                         speedo.clear();
                     }
                     (SyncState::BackFillSyncing { .. }, _) => {
                         // We have transitioned from a backfill sync, reset the speedo
+                        // 我们已经从backfill sync转换而来，重置speedo
                         let mut speedo = speedo.lock().await;
                         speedo.clear();
                     }
@@ -130,6 +140,7 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
 
             // The default is for regular sync but this gets modified if backfill sync is in
             // progress.
+            // 默认是regular sync，但是这会被修改，如果正在进行backfill sync
             let mut sync_distance = current_slot - head_slot;
 
             let mut speedo = speedo.lock().await;
@@ -163,6 +174,7 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
             // NOTE: This is going to change based on which sync we are currently performing. A
             // backfill sync should process slots significantly faster than the other sync
             // processes.
+            // backfill sync应该比其他的sync方式进展更快
             metrics::set_gauge(
                 &metrics::SYNC_SLOTS_PER_SECOND,
                 speedo.slots_per_second().unwrap_or(0_f64) as i64,
@@ -185,6 +197,7 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
             );
 
             // Log if we are backfilling.
+            // 对于我们是否处于backfilling进行日志
             let is_backfilling = matches!(current_sync_state, SyncState::BackFillSyncing { .. });
             if is_backfilling
                 && last_backfill_log_slot
@@ -319,6 +332,7 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
     };
 
     // run the notifier on the current executor
+    // 在当前的executor运行notifier
     executor.spawn(interval_future, "notifier");
 
     Ok(())

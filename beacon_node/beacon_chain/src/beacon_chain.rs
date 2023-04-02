@@ -325,9 +325,11 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// Database migrator for running background maintenance on the store.
     pub store_migrator: BackgroundMigrator<T::EthSpec, T::HotStore, T::ColdStore>,
     /// Reports the current slot, typically based upon the system clock.
+    /// 报告当前的slot，基于系统时钟
     pub slot_clock: T::SlotClock,
     /// Stores all operations (e.g., `Attestation`, `Deposit`, etc) that are candidates for
     /// inclusion in a block.
+    /// 存储所有的operations（例如，`Attestation`, `Depoist`），作为一个block的inclusion的candidates
     pub op_pool: OperationPool<T::EthSpec>,
     /// A pool of attestations dedicated to the "naive aggregation strategy" defined in the eth2
     /// specs.

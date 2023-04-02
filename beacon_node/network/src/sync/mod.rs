@@ -1,6 +1,8 @@
 //! Syncing for lighthouse.
+//! lighthouse的同步
 //!
 //! Stores the various syncing methods for the beacon chain.
+//! 存储beacon chain的各种同步方法
 mod backfill_sync;
 mod block_lookups;
 pub mod manager;

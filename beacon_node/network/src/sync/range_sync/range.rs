@@ -63,6 +63,8 @@ const FAILED_CHAINS_EXPIRY_SECONDS: u64 = 30;
 /// The primary object dealing with long range/batch syncing. This contains all the active and
 /// non-active chains that need to be processed before the syncing is considered complete. This
 /// holds the current state of the long range sync.
+/// 用于处理range/batch syncing的主要对象，它包含所有的active以及non-active chains，需要进行处理，在syncing被
+/// 认为完成之前，它维护long range sync的当前状态
 pub struct RangeSync<T: BeaconChainTypes, C = BeaconChain<T>> {
     /// The beacon chain for processing.
     beacon_chain: Arc<C>,
@@ -71,8 +73,10 @@ pub struct RangeSync<T: BeaconChainTypes, C = BeaconChain<T>> {
     awaiting_head_peers: HashMap<PeerId, SyncInfo>,
     /// A collection of chains that need to be downloaded. This stores any head or finalized chains
     /// that need to be downloaded.
+    /// 一系列需要被下载的chains，它存储任何需要被下载的的head以及finalized chains
     chains: ChainCollection<T, C>,
     /// Chains that have failed and are stored to prevent being retried.
+    /// 失败的chains，存储为了防止重试
     failed_chains: LRUTimeCache<Hash256>,
     /// The syncing logger.
     log: slog::Logger,

@@ -64,15 +64,19 @@ impl BatchConfig for BackFillBatchConfig {
 }
 
 /// Return type when attempting to start the backfill sync process.
+/// 返回类型，当试着启动backfill sync process
 pub enum SyncStart {
     /// The chain started syncing or is already syncing.
     Syncing {
         /// The number of slots that have been processed so far.
+        /// 已经被处理的slots的数目
         completed: usize,
         /// The number of slots still to be processed.
+        /// 还在被处理的slots的数目
         remaining: usize,
     },
     /// The chain didn't start syncing.
+    /// chain没有开始启动syncing
     NotSyncing,
 }
 

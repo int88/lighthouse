@@ -42,6 +42,7 @@ use types::{
 pub const ETH1_GENESIS_UPDATE_INTERVAL_MILLIS: u64 = 7_000;
 
 /// Builds a `Client` instance.
+/// 构建一个`Client`实例
 ///
 /// ## Notes
 ///
@@ -86,6 +87,7 @@ where
     TColdStore: ItemStore<TEthSpec> + 'static,
 {
     /// Instantiates a new, empty builder.
+    /// 实例化一个新的，空的builder
     ///
     /// The `eth_spec_instance` parameter is used to concretize `TEthSpec`.
     pub fn new(eth_spec_instance: TEthSpec) -> Self {
@@ -154,6 +156,7 @@ where
 
         let execution_layer = if let Some(config) = config.execution_layer {
             let context = runtime_context.service_context("exec".into());
+            // 启动execution layer
             let execution_layer = ExecutionLayer::from_config(
                 config,
                 context.executor.clone(),
@@ -195,9 +198,12 @@ where
         // If the client is expect to resume but there's no beacon chain in the database,
         // use the `DepositContract` method. This scenario is quite common when the client
         // is shutdown before finding genesis via eth1.
+        // 如果client期望能够resume，但是数据库中没有beacon chain，使用`DepositContract`方法
+        // 这个场景很常见，当client被关闭，在通过eth1找到genesis之前
         //
         // Alternatively, if there's a beacon chain in the database then always resume
         // using it.
+        // 另外，如果在数据库中有beacon chain，总是用它resume
         let client_genesis = if matches!(client_genesis, ClientGenesis::FromStore) && !chain_exists
         {
             info!(context.log(), "Defaulting to deposit contract genesis");
@@ -269,12 +275,14 @@ where
                 genesis_state_bytes,
                 url,
             } => {
+                // 从checkpoint sync开始
                 info!(
                     context.log(),
                     "Starting checkpoint sync";
                     "remote_url" => %url,
                 );
 
+                // 构建http client
                 let remote = BeaconNodeHttpClient::new(
                     url,
                     Timeouts::set_all(Duration::from_secs(
@@ -287,6 +295,8 @@ where
                     // We want to fetch deposit snapshot before fetching the finalized beacon state to
                     // ensure that the snapshot is not newer than the beacon state that satisfies the
                     // deposit finalization conditions
+                    // 在抓取finalized beacon state之前，我们想要抓取deposit snapshot
+                    // 确保snapshot不会新于beacon state，满足deposit finalization条件
                     debug!(context.log(), "Downloading deposit snapshot");
                     let deposit_snapshot_result = remote
                         .get_deposit_snapshot()
@@ -330,6 +340,7 @@ where
 
                 debug!(context.log(), "Downloading finalized block");
                 // Find a suitable finalized block on an epoch boundary.
+                // 在epoch boundary上找到一个合适的finalized block
                 let mut block = remote
                     .get_beacon_blocks_ssz::<TEthSpec>(BlockId::Finalized, &spec)
                     .await
@@ -348,6 +359,7 @@ where
                 let mut block_slot = block.slot();
 
                 while block.slot() % slots_per_epoch != 0 {
+                    // 对齐后的block slot
                     block_slot = (block_slot / slots_per_epoch - 1) * slots_per_epoch;
 
                     debug!(
@@ -375,6 +387,7 @@ where
 
                 debug!(
                     context.log(),
+                    // 下载对齐后的finalized block
                     "Downloaded aligned finalized block";
                     "block_root" => ?block.canonical_root(),
                     "block_slot" => block.slot(),
@@ -383,6 +396,7 @@ where
                 let state_root = block.state_root();
                 debug!(
                     context.log(),
+                    // 下载finalized state
                     "Downloading finalized state";
                     "state_root" => ?state_root
                 );
@@ -406,6 +420,7 @@ where
 
                 info!(
                     context.log(),
+                    // 加载checkpoint block以及state
                     "Loaded checkpoint block and state";
                     "slot" => block.slot(),
                     "block_root" => ?block.canonical_root(),
@@ -422,6 +437,7 @@ where
                         Ok(service) => {
                             info!(
                                 context.log(),
+                                // 加载deposit tree snapshot
                                 "Loaded deposit tree snapshot";
                                 "deposits loaded" => snapshot.deposit_count,
                             );
@@ -539,6 +555,7 @@ where
     }
 
     /// Starts the networking stack.
+    /// 启动networking stack
     pub async fn network(mut self, config: &NetworkConfig) -> Result<Self, String> {
         let beacon_chain = self
             .beacon_chain
@@ -576,6 +593,7 @@ where
     }
 
     /// Immediately starts the timer service.
+    /// 启动timer service
     fn timer(self) -> Result<Self, String> {
         let context = self
             .runtime_context
@@ -606,6 +624,7 @@ where
     }
 
     /// Immediately start the slasher service.
+    /// 立即启动slasher服务
     ///
     /// Error if no slasher is configured.
     pub fn start_slasher_service(&self) -> Result<(), String> {
@@ -627,6 +646,7 @@ where
 
     /// Start the explorer client which periodically sends beacon
     /// and system metrics to the configured endpoint.
+    /// 启动exploerer client，阶段性地发送beacon以及系统的metrics到配置的endpoint
     pub fn monitoring_client(self, config: &monitoring_api::Config) -> Result<Self, String> {
         let context = self
             .runtime_context
@@ -642,6 +662,7 @@ where
     }
 
     /// Immediately starts the service that periodically logs information each slot.
+    /// 立即启动service，在每个slot阶段性地输出日志
     pub fn notifier(self) -> Result<Self, String> {
         let context = self
             .runtime_context
@@ -662,6 +683,7 @@ where
             .ok_or("slot_notifier requires a chain spec")?
             .seconds_per_slot;
 
+        // 启动slot notifier
         spawn_notifier(
             context.executor,
             beacon_chain,

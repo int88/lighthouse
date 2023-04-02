@@ -339,6 +339,7 @@ pub fn serve<T: BeaconChainTypes>(
     let data_dir_filter = warp::any().map(move || inner_data_dir.clone());
 
     // Create a `warp` filter that provides access to the beacon chain.
+    // 创建一个`warp` filter，可以提供对beacon chain的访问
     let inner_ctx = ctx.clone();
     let chain_filter =
         warp::any()
@@ -347,6 +348,7 @@ pub fn serve<T: BeaconChainTypes>(
                 match chain {
                     Some(chain) => Ok(chain),
                     None => Err(warp_utils::reject::custom_not_found(
+                        // beacon chain的genesis还没有找到？
                         "Beacon chain genesis has not yet been observed.".to_string(),
                     )),
                 }
@@ -400,6 +402,7 @@ pub fn serve<T: BeaconChainTypes>(
         });
 
     // Create a `warp` filter that rejects requests whilst the node is syncing.
+    // 创建一个`warp` filter，拒绝请求，当node处于syncing的时候
     let not_while_syncing_filter =
         warp::any()
             .and(network_globals.clone())
@@ -408,6 +411,7 @@ pub fn serve<T: BeaconChainTypes>(
                 move |network_globals: Arc<NetworkGlobals<T::EthSpec>>,
                       chain: Arc<BeaconChain<T>>| async move {
                     match *network_globals.sync_state.read() {
+                        // 读取sync state
                         SyncState::SyncingFinalized { .. } => {
                             let head_slot = chain.canonical_head.cached_head().head_slot();
 
@@ -480,6 +484,7 @@ pub fn serve<T: BeaconChainTypes>(
     /*
      *
      * Start of HTTP method definitions.
+     * 开始HTTP方法的定义
      *
      */
 

@@ -4,8 +4,11 @@
 //! blocks and the latter allows for searching for blocks given a block-hash.
 //!
 //! These two RPC methods are designed for two type of syncing.
+//! 这两种RPC方法被设计用于两种类型的同步
 //! - Long range (batch) sync, when a client is out of date and needs to the latest head.
+//! - Long range（批量）的同步，当一个client已经过时了，需要最新的head
 //! - Parent lookup - when a peer provides us a block whose parent is unknown to us.
+//! - Parent lookup - 当一个peer提供给我们一个block，它的parent对我们是未知的
 //!
 //! Both of these syncing strategies are built into the `SyncManager`.
 //!
@@ -26,12 +29,16 @@
 //! queued for lookup. A round-robin approach is used to request the parent from the known list of
 //! fully sync'd peers. If `PARENT_FAIL_TOLERANCE` attempts at requesting the block fails, we
 //! drop the propagated block and downvote the peer that sent it to us.
+//! 当接收到一个block，有着未知的parent并且我们处于`Regular` sync mode，block排队等待查找，使用轮询的方法从一系列
+//! 已经完全同步的peers请求peers，如果尝试了`PARENT_FAIL_TOLERANCE`次，我们丢弃propagated block并且downvote发送给我们的peer
 //!
 //! Block Lookup
 //!
 //! To keep the logic maintained to the syncing thread (and manage the request_ids), when a block
 //! needs to be searched for (i.e if an attestation references an unknown block) this manager can
 //! search for the block and subsequently search for parents if needed.
+//! 为了将逻辑维护在syncing thread（并且管理request_ids），当一个block需要被查找（例如一个attestation引用了一个未知
+//! 的block），这个manager可以查找block并且后续查找parents，如果需要的话
 
 use super::backfill_sync::{BackFillSync, ProcessResult, SyncStart};
 use super::block_lookups::BlockLookups;
@@ -155,11 +162,14 @@ pub enum BatchProcessResult {
 /// current state of the syncing process, the number of useful peers, downloaded blocks and
 /// controls the logic behind both the long-range (batch) sync and the on-going potential parent
 /// look-up of blocks.
+/// 主要对象用于处理以及驱动当前所有的同步逻辑，它维护syncing process的当前状态，有用的peers的数目，下载的blocks
+/// 控制long-range sync背后的逻辑以及进行中潜在的blocks的parent查找逻辑
 pub struct SyncManager<T: BeaconChainTypes> {
     /// A reference to the underlying beacon chain.
     chain: Arc<BeaconChain<T>>,
 
     /// A reference to the network globals and peer-db.
+    /// 应用network globals以及peer-db
     network_globals: Arc<NetworkGlobals<T::EthSpec>>,
 
     /// A receiving channel sent by the message processor thread.
@@ -169,9 +179,11 @@ pub struct SyncManager<T: BeaconChainTypes> {
     network: SyncNetworkContext<T>,
 
     /// The object handling long-range batch load-balanced syncing.
+    /// 处理long-range批量负载均衡同步的对象
     range_sync: RangeSync<T>,
 
     /// Backfill syncing.
+    /// Backfill的同步
     backfill_sync: BackFillSync<T>,
 
     block_lookups: BlockLookups<T>,
@@ -183,6 +195,8 @@ pub struct SyncManager<T: BeaconChainTypes> {
 /// Spawns a new `SyncManager` thread which has a weak reference to underlying beacon
 /// chain. This allows the chain to be
 /// dropped during the syncing process which will gracefully end the `SyncManager`.
+/// 启动一个新的`SyncManager`线程，对于底层的beacon chain有着weak reference，这允许chain被dropped
+/// 在ysnc期间，可以优雅地结束`SyncManager`
 pub fn spawn<T: BeaconChainTypes>(
     executor: task_executor::TaskExecutor,
     beacon_chain: Arc<BeaconChain<T>>,
@@ -196,9 +210,11 @@ pub fn spawn<T: BeaconChainTypes>(
         "Max blocks that can be requested in a single batch greater than max allowed blocks in a single request"
     );
     // generate the message channel
+    // 生成message channel
     let (sync_send, sync_recv) = mpsc::unbounded_channel::<SyncMessage<T::EthSpec>>();
 
     // create an instance of the SyncManager
+    // 创建一个SyncManager的实例
     let mut sync_manager = SyncManager {
         chain: beacon_chain.clone(),
         network_globals: network_globals.clone(),
@@ -216,6 +232,7 @@ pub fn spawn<T: BeaconChainTypes>(
     };
 
     // spawn the sync manager thread
+    // 生成sync manager thread
     debug!(log, "Sync Manager started");
     executor.spawn(async move { Box::pin(sync_manager.main()).await }, "sync");
     sync_send
@@ -356,16 +373,23 @@ impl<T: BeaconChainTypes> SyncManager<T> {
 
     /// Updates the global sync state, optionally instigating or pausing a backfill sync as well as
     /// logging any changes.
+    /// 更新全局的sync state，唆使或者停止一个backfill sync以及记录任何的变更
     ///
     /// The logic for which sync should be running is as follows:
+    /// 应该运行哪种同步方式，应该按如下方式：
     /// - If there is a range-sync running (or required) pause any backfill and let range-sync
     /// complete.
+    /// - 如果有一个range-sync运行（或者要求），停止任何的backfill并且让range-sync完成
     /// - If there is no current range sync, check for any requirement to backfill and either
     /// start/resume a backfill sync if required. The global state will be BackFillSync if a
     /// backfill sync is running.
+    /// - 如果当前没有range sync，检查有没有需要backfill，是否需要启动或者resume一个backfill，global state
+    /// 会是一个BackFillSync，如果backfill sync在运行
     /// - If there is no range sync and no required backfill and we have synced up to the currently
     /// known peers, we consider ourselves synced.
+    /// - 如果没有range sync并且没有需要的backfill，我们已经同步到当前已知的peers，我们考虑自己为synced
     fn update_sync_state(&mut self) {
+        // 遍历range sync state
         let new_state: SyncState = match self.range_sync.state() {
             Err(e) => {
                 crit!(self.log, "Error getting range sync state"; "error" => %e);
@@ -435,6 +459,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                 }
                 Some((RangeSyncType::Head, start_slot, target_slot)) => {
                     // If there is a backfill sync in progress pause it.
+                    // 如果有一个backfill sync在进行中，停止它
                     self.backfill_sync.pause();
 
                     SyncState::SyncingHead {
