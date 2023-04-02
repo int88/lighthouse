@@ -1,4 +1,5 @@
 //! This module contains endpoints that are non-standard and only available on Lighthouse servers.
+//! 这个module包含的endpoints是非标准的并且只在Lighthouse servers中可用
 
 mod attestation_performance;
 pub mod attestation_rewards;

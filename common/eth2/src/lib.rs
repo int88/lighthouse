@@ -1,6 +1,7 @@
 //! This crate provides two major things:
 //!
 //! 1. The types served by the `http_api` crate.
+//! 1. 类型由`http_api` create服务
 //! 2. A wrapper around `reqwest` that forms a HTTP client, able of consuming the endpoints served
 //!    by the `http_api` crate.
 //!
