@@ -4,9 +4,14 @@
 //! will perform a [`RangeSync`] to the latest head from the trusted state, such that the
 //! client can perform its duties right away. Once completed, a backfill sync occurs, where all old
 //! blocks (from genesis) are downloaded in order to keep a consistent history.
+//! 这种类型的sync发生，当一个trusted state提供给client，client会执行一个[`RangeSync`]到最新的head
+//! 这样client可以立即执行它的duties，一旦完成，开始backfill sync，当所有的old blocks（从genesis开始）
+//! 下载，为了保持一个一致的历史
 //!
 //! If a batch fails, the backfill sync cannot progress. In this scenario, we mark the backfill
 //! sync as failed, log an error and attempt to retry once a new peer joins the node.
+//! 一旦一个batch失败，backfill sync不能进行下去，这种情况下，标记backfill失败，记录一个error并且重试
+//! 一旦有一个新的peer加入节点
 
 use crate::beacon_processor::{ChainSegmentProcessId, WorkEvent as BeaconWorkEvent};
 use crate::sync::manager::{BatchProcessResult, Id};
@@ -105,46 +110,60 @@ pub enum BackFillError {
 
 pub struct BackFillSync<T: BeaconChainTypes> {
     /// Keeps track of the current progress of the backfill.
+    /// 追踪当前的backfill的进程
     /// This only gets refreshed from the beacon chain if we enter a failed state.
+    /// 这只会在我们进入failed state的时候更新
     current_start: BatchId,
 
     /// Starting epoch of the batch that needs to be processed next.
     /// This is incremented as the chain advances.
+    /// 下次需要处理的batch的starting epoch
     processing_target: BatchId,
 
     /// Starting epoch of the next batch that needs to be downloaded.
+    /// 下一批需要下载的blocks的starting epoch
     to_be_downloaded: BatchId,
 
     /// Keeps track if we have requested the final batch.
     last_batch_downloaded: bool,
 
     /// Sorted map of batches undergoing some kind of processing.
+    /// 排好序的batches，等待一些处理
     batches: BTreeMap<BatchId, BatchInfo<T::EthSpec, BackFillBatchConfig>>,
 
     /// List of peers we are currently awaiting a response for.
+    /// 一系列我们等待response的peers
     active_requests: HashMap<PeerId, HashSet<BatchId>>,
 
     /// The current processing batch, if any.
+    /// 当前正在处理的batch，如果有的话
     current_processing_batch: Option<BatchId>,
 
     /// Batches validated by this chain.
+    /// 被这个chain校验的batches
     validated_batches: u64,
 
     /// We keep track of peers that are participating in the backfill sync. Unlike RangeSync,
     /// BackFillSync uses all synced peers to download the chain from. If BackFillSync fails, we don't
     /// want to penalize all our synced peers, so we use this variable to keep track of peers that
     /// have participated and only penalize these peers if backfill sync fails.
+    /// 我们追踪加入到backfill sync的peers，不像RangeSync，BackFillSync使用所有synced peers去下载chain
+    /// 如果BackFillSync失败，我们想惩罚所有我们的synced peers，因此我们使用这个参数来追踪那些已经参与的
+    /// peers并且惩罚这些peers，如果backfill sync失败
     participating_peers: HashSet<PeerId>,
 
     /// When a backfill sync fails, we keep track of whether a new fully synced peer has joined.
     /// This signifies that we are able to attempt to restart a failed chain.
+    /// 当一个backfill失败的时候，我们追踪是否一个新的synced peer已经加入，这表明是否我们能试着重启一个失败的尝试
     restart_failed_sync: bool,
 
     /// Reference to the beacon chain to obtain initial starting points for the backfill sync.
+    /// 引用的beacon chain来获取初始的starting points，对于backfill sync
     beacon_chain: Arc<BeaconChain<T>>,
 
     /// Reference to the network globals in order to obtain valid peers to backfill blocks from
     /// (i.e synced peers).
+    /// 引用netwwork globals，为了获取合法的peers来backfill blocks
     network_globals: Arc<NetworkGlobals<T::EthSpec>>,
 
     /// A logger for backfill sync.
@@ -201,6 +220,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     }
 
     /// Pauses the backfill sync if it's currently syncing.
+    /// 停止backfill sync，如果它当前正在同步
     pub fn pause(&mut self) {
         if let BackFillState::Syncing = self.state() {
             debug!(self.log, "Backfill sync paused"; "processed_epochs" => self.validated_batches, "to_be_processed" => self.current_start);
@@ -209,8 +229,10 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     }
 
     /// Starts or resumes syncing.
+    /// 开始或者继续同步
     ///
     /// If resuming is successful, reports back the current syncing metrics.
+    /// 如果resuming成功，汇报当前的syncing metrics
     #[must_use = "A failure here indicates the backfill sync has failed and the global sync state should be updated"]
     pub fn start(
         &mut self,
@@ -223,19 +245,24 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                     .network_globals
                     .peers
                     .read()
+                    // 从synced peers同步
                     .synced_peers()
                     .next()
                     .is_some()
                 {
                     // If there are peers to resume with, begin the resume.
+                    // 有peers可以resume，开始resume
                     debug!(self.log, "Resuming backfill sync"; "start_epoch" => self.current_start, "awaiting_batches" => self.batches.len(), "processing_target" => self.processing_target);
                     self.set_state(BackFillState::Syncing);
                     // Resume any previously failed batches.
+                    // 开始之前失败的batches
                     self.resume_batches(network)?;
                     // begin requesting blocks from the peer pool, until all peers are exhausted.
+                    // 开始从peer pool请求blocks，直到所有peers已经exhausted
                     self.request_batches(network)?;
 
                     // start processing batches if needed
+                    // 开始处理batches，如果需要的话
                     self.process_completed_batches(network)?;
                 } else {
                     return Ok(SyncStart::NotSyncing);
@@ -246,6 +273,8 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                 // cleared already for a fresh start.
                 // We only attempt to restart a failed backfill sync if a new synced peer has been
                 // added.
+                // 试着从一个failed sync恢复，所有的本地变量都应该被重置并且清理，在一个fresh start之前
+                // 我们只重试一个failed backfill sync，如果一个新的synced peer已经加入
                 if !self.restart_failed_sync {
                     return Ok(SyncStart::NotSyncing);
                 }
@@ -253,6 +282,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                 self.set_state(BackFillState::Syncing);
 
                 // Obtain a new start slot, from the beacon chain and handle possible errors.
+                // 获取一个新的start slot，从beacon chain并且处理可能的errors
                 match self.reset_start_epoch() {
                     Err(ResetEpochError::SyncCompleted) => {
                         error!(self.log, "Backfill sync completed whilst in failed status");
@@ -277,6 +307,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                 debug!(self.log, "Resuming a failed backfill sync"; "start_epoch" => self.current_start);
 
                 // begin requesting blocks from the peer pool, until all peers are exhausted.
+                // 开始从peer pool请求blocks，直到所有的peers被用尽
                 self.request_batches(network)?;
             }
             BackFillState::Completed | BackFillState::NotRequired => {
@@ -906,6 +937,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     }
 
     /// Sends and registers the request of a batch awaiting download.
+    /// 发送并且注册关于一个批量awaiting download的请求
     fn retry_batch_download(
         &mut self,
         network: &mut SyncNetworkContext<T>,
@@ -917,6 +949,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
         };
 
         // Find a peer to request the batch
+        // 找到一个peer请求batch
         let failed_peers = batch.failed_peers();
 
         let new_peer = {
@@ -934,15 +967,18 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                 })
                 .collect::<Vec<_>>();
             // Sort peers prioritizing unrelated peers with less active requests.
+            // 对peers进行排序
             priorized_peers.sort_unstable();
             priorized_peers.get(0).map(|&(_, _, peer)| peer)
         };
 
         if let Some(peer) = new_peer {
+            // 将peer加入
             self.participating_peers.insert(peer);
             self.send_batch(network, batch_id, peer)
         } else {
             // If we are here the chain has no more synced peers
+            // 已经没有更多synced peers
             info!(self.log, "Backfill sync paused"; "reason" => "insufficient_synced_peers");
             self.set_state(BackFillState::Paused);
             Err(BackFillError::Paused)
@@ -950,6 +986,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     }
 
     /// Requests the batch assigned to the given id from a given peer.
+    /// 从给定的peer请求batch，给定一个id
     fn send_batch(
         &mut self,
         network: &mut SyncNetworkContext<T>,
@@ -961,12 +998,14 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
             match network.backfill_blocks_by_range_request(peer, request, batch_id) {
                 Ok(request_id) => {
                     // inform the batch about the new request
+                    // 新的request的batch
                     if let Err(e) = batch.start_downloading_from_peer(peer, request_id) {
                         return self.fail_sync(BackFillError::BatchInvalidState(batch_id, e.0));
                     }
                     debug!(self.log, "Requesting batch"; "epoch" => batch_id, &batch);
 
                     // register the batch for this peer
+                    // 为这个peer注册batch
                     self.active_requests
                         .entry(peer)
                         .or_default()
@@ -1005,6 +1044,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
 
     /// When resuming a chain, this function searches for batches that need to be re-downloaded and
     /// transitions their state to redownload the batch.
+    /// 当重新开始一个chain，这个参数查找需要重新下载的batches并且转换他们的状态到重新下载batches
     fn resume_batches(&mut self, network: &mut SyncNetworkContext<T>) -> Result<(), BackFillError> {
         let batch_ids_to_retry = self
             .batches
@@ -1029,6 +1069,8 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
 
     /// Attempts to request the next required batches from the peer pool if the chain is syncing. It will exhaust the peer
     /// pool and left over batches until the batch buffer is reached or all peers are exhausted.
+    /// 试着从peer pool请求下一个需要的batches，它会用尽peer pool并且剩下batches，直到batch buffer到达或者
+    /// 所有peers已经被用尽
     fn request_batches(
         &mut self,
         network: &mut SyncNetworkContext<T>,
@@ -1038,8 +1080,10 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
         }
 
         // find the next pending batch and request it from the peer
+        // 找到下一个pending batch并且从peer请求
 
         // randomize the peers for load balancing
+        // 对peers进行随机用于负载均衡
         let mut rng = rand::thread_rng();
         let mut idle_peers = self
             .network_globals
@@ -1060,6 +1104,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
         while let Some(peer) = idle_peers.pop() {
             if let Some(batch_id) = self.include_next_batch() {
                 // send the batch
+                // 发送batch
                 self.send_batch(network, batch_id, peer)?;
             } else {
                 // No more batches, simply stop
@@ -1071,6 +1116,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
 
     /// Creates the next required batch from the chain. If there are no more batches required,
     /// `false` is returned.
+    /// 创建chain中下一个需要的batch，如果不需要更多的batches，返回`false`
     fn include_next_batch(&mut self) -> Option<BatchId> {
         // don't request batches beyond genesis;
         if self.last_batch_downloaded {
@@ -1078,6 +1124,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
         }
 
         // only request batches up to the buffer size limit
+        // 只请求batches，直到buffer size limit
         // NOTE: we don't count batches in the AwaitingValidation state, to prevent stalling sync
         // if the current processing window is contained in a long range of skip slots.
         let in_buffer = |batch: &BatchInfo<T::EthSpec, BackFillBatchConfig>| {
@@ -1098,9 +1145,11 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
 
         let batch_id = self.to_be_downloaded;
         // this batch could have been included already being an optimistic batch
+        // 这个batch可能已经被包含，在一个optimistic batch
         match self.batches.entry(batch_id) {
             Entry::Occupied(_) => {
                 // this batch doesn't need downloading, let this same function decide the next batch
+                // 这个batch不需要下载，让这个函数决定下一个batch
                 if batch_id == 0 {
                     self.last_batch_downloaded = true;
                 }
@@ -1160,6 +1209,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     }
 
     /// Updates the global network state indicating the current state of a backfill sync.
+    /// 更新全局的network state，表明一个backfill sync当前的状态
     fn set_state(&self, state: BackFillState) {
         *self.network_globals.backfill_state.write() = state;
     }

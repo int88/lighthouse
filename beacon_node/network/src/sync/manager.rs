@@ -65,10 +65,14 @@ use types::{EthSpec, Hash256, SignedBeaconBlock, Slot};
 /// The number of slots ahead of us that is allowed before requesting a long-range (batch)  Sync
 /// from a peer. If a peer is within this tolerance (forwards or backwards), it is treated as a
 /// fully sync'd peer.
+/// 从一个peer请求long-range(batch) sync允许的提前的slots数目，如果一个peer在这个tolerance之内（前向或者后向）
+/// 它被认为是fully sync的peer
 ///
 /// This means that we consider ourselves synced (and hence subscribe to all subnets and block
 /// gossip if no peers are further than this range ahead of us that we have not already downloaded
 /// blocks for.
+/// 这意味着我们考虑自己为synced（并且因此订阅所有的subnets以及block gossip，如果没有peer在超过这个范围
+/// 有我们没有下载的blocks）
 pub const SLOT_IMPORT_TOLERANCE: usize = 32;
 
 pub type Id = u32;
@@ -81,6 +85,7 @@ pub enum RequestId {
     /// Request searching for a block's parent. The id is the chain
     ParentLookup { id: Id },
     /// Request was from the backfill sync algorithm.
+    /// 来自backfill同步算法的请求
     BackFillSync { id: Id },
     /// The request was from a chain in the range sync algorithm.
     RangeSync { id: Id },
@@ -242,14 +247,19 @@ impl<T: BeaconChainTypes> SyncManager<T> {
     /* Input Handling Functions */
 
     /// A peer has connected which has blocks that are unknown to us.
+    /// 一个peer被连接，它有对我们未知的blocks
     ///
     /// This function handles the logic associated with the connection of a new peer. If the peer
     /// is sufficiently ahead of our current head, a range-sync (batch) sync is started and
     /// batches of blocks are queued to download from the peer. Batched blocks begin at our latest
     /// finalized head.
+    /// 这个函数处理一个新的peer的相关连接，如果peer在我们当前的head足够前面，开始一个range-sync并且批量的
+    /// blocks排队，要从peer下载，批量的blocks从我们最新的finalized head开始
     ///
     /// If the peer is within the `SLOT_IMPORT_TOLERANCE`, then it's head is sufficiently close to
     /// ours that we consider it fully sync'd with respect to our current chain.
+    /// 如果peer在`SLOT_IMPORT_TOLERANCE`之内，那么它的head跟我们的足够近，我们可以认为它full sync'd
+    /// 和我们当前的chain
     fn add_peer(&mut self, peer_id: PeerId, remote: SyncInfo) {
         // ensure the beacon chain still exists
         let status = self.chain.status_message();
@@ -263,9 +273,11 @@ impl<T: BeaconChainTypes> SyncManager<T> {
         let sync_type = remote_sync_type(&local, &remote, &self.chain);
 
         // update the state of the peer.
+        // 更新peer的state
         let should_add = self.update_peer_sync_state(&peer_id, &local, &remote, &sync_type);
 
         if matches!(sync_type, PeerSyncType::Advanced) && should_add {
+            // 请求range sync
             self.range_sync
                 .add_peer(&mut self.network, local, peer_id, remote);
         }
@@ -325,6 +337,8 @@ impl<T: BeaconChainTypes> SyncManager<T> {
     /// Updates the syncing state of a peer.
     /// Return whether the peer should be used for range syncing or not, according to its
     /// connection status.
+    /// 更新一个peer的syncing state
+    /// 返回peer是否应该被用于range syncing，根据它的连接状态
     fn update_peer_sync_state(
         &mut self,
         peer_id: &PeerId,
@@ -493,6 +507,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
         let check_ee = self.chain.execution_layer.is_some();
         let mut check_ee_stream = {
             // some magic to have an instance implementing stream even if there is no execution layer
+            // 一些魔法，能让一个实例实现stream，即使没有execution layer
             let ee_responsiveness_watch: futures::future::OptionFuture<_> = self
                 .chain
                 .execution_layer
@@ -503,6 +518,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
         };
 
         // process any inbound messages
+        // 处理任何的inbound message
         loop {
             tokio::select! {
                 Some(sync_message) = self.input_channel.recv() => {

@@ -101,8 +101,10 @@ pub struct BatchInfo<T: EthSpec, B: BatchConfig = RangeSyncBatchConfig> {
 }
 
 /// Current state of a batch
+/// 当前一个batch的状态
 pub enum BatchState<T: EthSpec> {
     /// The batch has failed either downloading or processing, but can be requested again.
+    /// batch已经下载或者处理失败了，但是可以再次请求
     AwaitingDownload,
     /// The batch is being downloaded.
     Downloading(PeerId, Vec<Arc<SignedBeaconBlock<T>>>, Id),
@@ -115,11 +117,14 @@ pub enum BatchState<T: EthSpec> {
     /// It is not sufficient to process a batch successfully to consider it correct. This is
     /// because batches could be erroneously empty, or incomplete. Therefore, a batch is considered
     /// valid, only if the next sequential batch imports at least a block.
+    /// 一个batch被认为是合法的，只有下一个sequential batch导入至少一个block
     AwaitingValidation(Attempt),
     /// Intermediate state for inner state handling.
+    /// 内部的state handling的中间状态
     Poisoned,
     /// The batch has maxed out the allowed attempts for either downloading or processing. It
     /// cannot be recovered.
+    /// batch已经超过了最大的允许尝试的数目，不论对于下载还是处理，它不能恢复
     Failed,
 }
 
@@ -349,6 +354,7 @@ impl<T: EthSpec, B: BatchConfig> BatchInfo<T, B> {
     ) -> Result<(), WrongState> {
         match self.state.poison() {
             BatchState::AwaitingDownload => {
+                // 状态设置为Downloading
                 self.state = BatchState::Downloading(peer, Vec::new(), request_id);
                 Ok(())
             }

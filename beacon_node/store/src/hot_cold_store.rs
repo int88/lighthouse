@@ -54,6 +54,7 @@ pub struct HotColdDB<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> {
     /// greater than or equal are in the hot DB.
     pub(crate) split: RwLock<Split>,
     /// The starting slots for the range of blocks & states stored in the database.
+    /// 对于一系列存储在数据库中的blocks & states的starting slots
     anchor_info: RwLock<Option<AnchorInfo>>,
     pub(crate) config: StoreConfig,
     /// Cold database containing compact historical data.

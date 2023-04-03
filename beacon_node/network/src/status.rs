@@ -3,6 +3,7 @@ use types::{EthSpec, Hash256};
 
 use lighthouse_network::rpc::StatusMessage;
 /// Trait to produce a `StatusMessage` representing the state of the given `beacon_chain`.
+/// Trait用来生成一个`StatusMessage`，表示给定的`beacon_chain`的状态
 ///
 /// NOTE: The purpose of this is simply to obtain a `StatusMessage` from the `BeaconChain` without
 /// polluting/coupling the type with RPC concepts.

@@ -4,12 +4,16 @@ use lighthouse_network::{SyncInfo, SyncStatus as PeerSyncStatus};
 use std::cmp::Ordering;
 
 /// The type of peer relative to our current state.
+/// peer相对于我们当前state的类型
 pub enum PeerSyncType {
     /// The peer is on our chain and is fully synced with respect to our chain.
+    /// peer在我们的chain上并且相对于我们的chain完全同步了
     FullySynced,
     /// The peer has a greater knowledge of the chain than us that warrants a full sync.
+    /// peer对chain比我们知道的更多，我们需要完全同步
     Advanced,
     /// A peer is behind in the sync and not useful to us for downloading blocks.
+    /// peer在我们之后并且对我们下载blocks没用
     Behind,
 }
 

@@ -40,14 +40,18 @@ pub enum SyncState {
 /// The state of the backfill sync.
 pub enum BackFillState {
     /// The sync is partially completed and currently paused.
+    /// sync已经部分完成并且当前停止了
     Paused,
     /// We are currently backfilling.
+    /// 我们当前正在backfilling
     Syncing,
     /// A backfill sync has completed.
+    /// 一个backfill sync已经完成
     Completed,
     /// A backfill sync is not required.
     NotRequired,
     /// Too many failed attempts at backfilling. Consider it failed.
+    /// 在backfilling过程中有太多失败，可以认为失败
     Failed,
 }
 

@@ -56,6 +56,8 @@ pub type BatchId = Epoch;
 /// A chain of blocks that need to be downloaded. Peers who claim to contain the target head
 /// root are grouped into the peer pool and queried for batches when downloading the
 /// chain.
+/// 一个chain of blocks需要被下载，任何声称包含target head root的peers被组成一个peer pool并且
+/// 请求batches，当下载chain
 pub struct SyncingChain<T: BeaconChainTypes> {
     /// A random id used to identify this chain.
     id: ChainId,
@@ -70,6 +72,7 @@ pub struct SyncingChain<T: BeaconChainTypes> {
     pub target_head_root: Hash256,
 
     /// Sorted map of batches undergoing some kind of processing.
+    /// 排好序的，正在等待处理的一些batches
     batches: BTreeMap<BatchId, BatchInfo<T::EthSpec>>,
 
     /// The peers that agree on the `target_head_slot` and `target_head_root` as a canonical chain
@@ -78,10 +81,12 @@ pub struct SyncingChain<T: BeaconChainTypes> {
     peers: FnvHashMap<PeerId, HashSet<BatchId>>,
 
     /// Starting epoch of the next batch that needs to be downloaded.
+    /// 下一个需要被下载的batch的starting epoch
     to_be_downloaded: BatchId,
 
     /// Starting epoch of the batch that needs to be processed next.
     /// This is incremented as the chain advances.
+    /// 下一批需要被处理的batch的starting epoch
     processing_target: BatchId,
 
     /// Optimistic head to sync.
