@@ -1,9 +1,13 @@
 //! Storage functionality for Lighthouse.
+//! 对于Lighthouse的Storage功能
 //!
 //! Provides the following stores:
+//! 提供如下的存储
 //!
 //! - `HotColdDB`: an on-disk store backed by leveldb. Used in production.
+//! - `HotColdDB`: 一个磁盘存储，背后是leveldb，使用在生产中
 //! - `MemoryStore`: an in-memory store backed by a hash-map. Used for testing.
+//! - `MemoryStore`: 一个内存中的store，背后是hash-map，用于测试
 //!
 //! Provides a simple API for storing/retrieving all types that sometimes needs type-hints. See
 //! tests for implementation examples.

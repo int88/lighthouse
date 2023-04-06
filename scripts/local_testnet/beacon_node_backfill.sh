@@ -41,7 +41,7 @@ network_port=${@:$OPTIND+1:1}
 http_port=${@:$OPTIND+2:1}
 
 exec lighthouse \
-	--debug-level $DEBUG_LEVEL \
+	--debug-level debug \
 	bn \
 	$SUBSCRIBE_ALL_SUBNETS \
 	--datadir $HOME/.lighthouse/local-testnet/backfill \
@@ -51,7 +51,7 @@ exec lighthouse \
 	--enr-address 127.0.0.1 \
 	--enr-udp-port 9010 \
 	--enr-tcp-port 9010 \
-	--port $network_port \
+	--port 9010 \
 	--http-port 8010 \
 	--disable-packet-filter \
 	--target-peers $((BN_COUNT - 1)) \

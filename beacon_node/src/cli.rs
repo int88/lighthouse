@@ -175,6 +175,7 @@ pub fn cli_app<'a, 'b>() -> App<'a, 'b> {
             Arg::with_name("enr-tcp-port")
                 .long("enr-tcp-port")
                 .value_name("PORT")
+                // 本地ENR的TCP4端口，设置它，只有在你确认其他node可以通过这个端口连接到你的本地node
                 .help("The TCP4 port of the local ENR. Set this only if you are sure other nodes \
                       can connect to your local node on this port over IpV4. The --port flag is \
                       used if this is not set.")

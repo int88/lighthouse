@@ -797,9 +797,12 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Store a post-finalization state efficiently in the hot database.
+    /// 高效地存储post-finalization到hot database
     ///
     /// On an epoch boundary, store a full state. On an intermediate slot, store
     /// just a backpointer to the nearest epoch boundary.
+    /// 在每个epoch boundary，存储full state，对一个中间的slot，存储一个backpointer
+    /// 到最近的epoch boudary
     pub fn store_hot_state(
         &self,
         state_root: &Hash256,
@@ -807,6 +810,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         ops: &mut Vec<KeyValueStoreOp>,
     ) -> Result<(), Error> {
         // On the epoch boundary, store the full state.
+        // 在epoch boudary，存储full state
         if state.slot() % E::slots_per_epoch() == 0 {
             trace!(
                 self.log,
@@ -820,6 +824,8 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         // Store a summary of the state.
         // We store one even for the epoch boundary states, as we may need their slots
         // when doing a look up by state root.
+        // 存储state的summary，我们甚至存储一个epoch boundary state，因为我们需要它们的slots
+        // 当我们用state root进行查找的时候
         let hot_state_summary = HotStateSummary::new(state_root, state)?;
         let op = hot_state_summary.as_kv_store_op(*state_root);
         ops.push(op);
@@ -828,8 +834,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load a post-finalization state from the hot database.
+    /// 从hot db中加载一个post-finalization state
     ///
     /// Will replay blocks from the nearest epoch boundary.
+    /// 会从最近的epoch boudary进行重放
     pub fn load_hot_state(
         &self,
         state_root: &Hash256,
@@ -839,6 +847,8 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
 
         // If the state is marked as temporary, do not return it. It will become visible
         // only once its transaction commits and deletes its temporary flag.
+        // 如果state被标记为temporary，不要返回它，它会变为visible，只有它的transaction commits并且
+        // 删除它的temporary flag
         if self.load_state_temporary_flag(state_root)?.is_some() {
             return Ok(None);
         }
@@ -856,11 +866,14 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
 
             // Optimization to avoid even *thinking* about replaying blocks if we're already
             // on an epoch boundary.
+            // 优化，避免了甚至需要思考replaying blocks，如果我们在epoch boundary的话
             let state = if slot % E::slots_per_epoch() == 0 {
                 boundary_state
             } else {
+                // 加载需要replay的blocks
                 let blocks =
                     self.load_blocks_to_replay(boundary_state.slot(), slot, latest_block_root)?;
+                // 重放blocks
                 self.replay_blocks(
                     boundary_state,
                     blocks,
@@ -1372,10 +1385,12 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load a hot state's summary, given its root.
+    /// 加载一个hot state的summary，给定它的root
     pub fn load_hot_state_summary(
         &self,
         state_root: &Hash256,
     ) -> Result<Option<HotStateSummary>, Error> {
+        // 从hot db中获取state
         self.hot_db.get(state_root)
     }
 
@@ -1740,8 +1755,10 @@ fn no_state_root_iter() -> Option<std::iter::Empty<Result<(Hash256, Slot), Error
 }
 
 /// Struct for summarising a state in the hot database.
+/// 结构体用于summarising一个state到hot db中
 ///
 /// Allows full reconstruction by replaying blocks.
+/// 允许通过重放blocks来reconstruction
 #[derive(Debug, Clone, Copy, Default, Encode, Decode)]
 pub struct HotStateSummary {
     slot: Slot,
@@ -1765,9 +1782,11 @@ impl StoreItem for HotStateSummary {
 
 impl HotStateSummary {
     /// Construct a new summary of the given state.
+    /// 对给定的state构建一个新的summary
     pub fn new<E: EthSpec>(state_root: &Hash256, state: &BeaconState<E>) -> Result<Self, Error> {
         // Fill in the state root on the latest block header if necessary (this happens on all
         // slots where there isn't a skip).
+        // 填充state root到最新的block header，如果需要的话（这发生在所有的slots，其中没有skip的话）
         let latest_block_root = state.get_latest_block_root(*state_root);
         let epoch_boundary_slot = state.slot() / E::slots_per_epoch() * E::slots_per_epoch();
         let epoch_boundary_state_root = if epoch_boundary_slot == state.slot() {

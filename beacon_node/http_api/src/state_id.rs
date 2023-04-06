@@ -16,6 +16,7 @@ impl StateId {
     }
 
     /// Return the state root identified by `self`.
+    /// 返回由`self`标识的state root
     pub fn root<T: BeaconChainTypes>(
         &self,
         chain: &BeaconChain<T>,
@@ -33,11 +34,13 @@ impl StateId {
             }
             CoreStateId::Genesis => return Ok((chain.genesis_state_root, false)),
             CoreStateId::Finalized => {
+                // 返回finalized checkpoint
                 let finalized_checkpoint =
                     chain.canonical_head.cached_head().finalized_checkpoint();
                 checkpoint_slot_and_execution_optimistic(chain, finalized_checkpoint)?
             }
             CoreStateId::Justified => {
+                // 返回justified checkpoint
                 let justified_checkpoint =
                     chain.canonical_head.cached_head().justified_checkpoint();
                 checkpoint_slot_and_execution_optimistic(chain, justified_checkpoint)?
@@ -64,6 +67,7 @@ impl StateId {
                     return Ok((*root, execution_optimistic));
                 } else if let Some(_cold_state_slot) = chain
                     .store
+                    // 从cold state中加载
                     .load_cold_state_slot(root)
                     .map_err(BeaconChainError::DBError)
                     .map_err(warp_utils::reject::beacon_chain_error)?
@@ -79,6 +83,7 @@ impl StateId {
                         .map_err(warp_utils::reject::beacon_chain_error)?;
                     return Ok((*root, execution_optimistic));
                 } else {
+                    // 读取beacon state失败
                     return Err(warp_utils::reject::custom_not_found(format!(
                         "beacon state for state root {}",
                         root
