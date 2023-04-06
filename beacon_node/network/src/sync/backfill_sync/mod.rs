@@ -97,14 +97,19 @@ pub enum ProcessResult {
 #[derive(Debug)]
 pub enum BackFillError {
     /// A batch failed to be downloaded.
+    /// 一个batch下载失败
     BatchDownloadFailed(BatchId),
     /// A batch could not be processed.
+    /// 一个batch不能被处理
     BatchProcessingFailed(BatchId),
     /// A batch entered an invalid state.
+    /// 一个batch进入了invalid state
     BatchInvalidState(BatchId, String),
     /// The sync algorithm entered an invalid state.
+    /// sync algorigthm进入了invalid state
     InvalidSyncState(String),
     /// The chain became paused.
+    /// chain停住了
     Paused,
 }
 
@@ -532,12 +537,14 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
 
     /// Processes the batch with the given id.
     /// The batch must exist and be ready for processing
+    /// 处理有着给定id的batch，batch必须存在并且准备好被处理
     fn process_batch(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         batch_id: BatchId,
     ) -> Result<ProcessResult, BackFillError> {
         // Only process batches if this chain is Syncing, and only one at a time
+        // 只处理batches，如果chain正在同步，一次一个
         if self.state() != BackFillState::Syncing || self.current_processing_batch.is_some() {
             return Ok(ProcessResult::Successful);
         }
@@ -557,6 +564,8 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
         // NOTE: We send empty batches to the processor in order to trigger the block processor
         // result callback. This is done, because an empty batch could end a chain and the logic
         // for removing chains and checking completion is in the callback.
+        // 注意：我们发送空的batches到processor，为了触发block processor result的回调，因为一个空的batch可以
+        // 结束一个chain以及移除chains的逻辑，检查完整性，在这个callback
 
         let blocks = match batch.start_processing() {
             Err(e) => {
@@ -574,6 +583,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
             .processor_channel()
             .try_send(BeaconWorkEvent::chain_segment(process_id, blocks))
         {
+            // 发送backfill segment到processor失败
             crit!(self.log, "Failed to send backfill segment to processor."; "msg" => "process_batch",
                 "error" => %e, "batch" => self.processing_target);
             // This is unlikely to happen but it would stall syncing since the batch now has no
@@ -588,7 +598,9 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
 
     /// The block processor has completed processing a batch. This function handles the result
     /// of the batch processor.
+    /// block processor已经处理完了一个batch，这个函数处理batch processor的结果
     /// If an error is returned the BackFill sync has failed.
+    /// 如果返回一个error，Backfill sync已经失败了
     #[must_use = "A failure here indicates the backfill sync has failed and the global sync state should be updated"]
     pub fn on_batch_process_result(
         &mut self,
@@ -731,20 +743,24 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     }
 
     /// Processes the next ready batch.
+    /// 处理下一批ready batch
     fn process_completed_batches(
         &mut self,
         network: &mut SyncNetworkContext<T>,
     ) -> Result<ProcessResult, BackFillError> {
         // Only process batches if backfill is syncing and only process one batch at a time
+        // 只处理batches，如果backfill正在同步并且一次只有一个batch
         if self.state() != BackFillState::Syncing || self.current_processing_batch.is_some() {
             return Ok(ProcessResult::Successful);
         }
 
         // Find the id of the batch we are going to process.
+        // 找到当前我们正在处理的batch
         if let Some(batch) = self.batches.get(&self.processing_target) {
             let state = batch.state();
             match state {
                 BatchState::AwaitingProcessing(..) => {
+                    // 处理batch
                     return self.process_batch(network, self.processing_target);
                 }
                 BatchState::Downloading(..) => {
@@ -788,6 +804,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
 
     /// Removes any batches previous to the given `validating_epoch` and updates the current
     /// boundaries of the chain.
+    /// 移除任何在给定的`validating_epoch`之前的batches并且更新当前chain的boundaries
     ///
     /// The `validating_epoch` must align with batch boundaries.
     ///

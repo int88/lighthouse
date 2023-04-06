@@ -1,5 +1,7 @@
 //! Provides network functionality for the Syncing thread. This fundamentally wraps a network
 //! channel and stores a global RPC ID to perform requests.
+//! 提供network功能，对于Syncing thread，它封装一个network channel并且存储一个全局的global RPC ID
+//! 用于执行请求
 
 use super::manager::{Id, RequestId as SyncRequestId};
 use super::range_sync::{BatchId, ChainId};
@@ -15,6 +17,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 
 /// Wraps a Network channel to employ various RPC related network functionality for the Sync manager. This includes management of a global RPC request Id.
+/// 封装一个Network channel用于使用各种RPC相关的网络功能，对于Sync manager
 
 pub struct SyncNetworkContext<T: BeaconChainTypes> {
     /// The network channel to relay messages to the Network service.
@@ -30,13 +33,16 @@ pub struct SyncNetworkContext<T: BeaconChainTypes> {
     range_requests: FnvHashMap<Id, (ChainId, BatchId)>,
 
     /// BlocksByRange requests made by backfill syncing.
+    /// backfill syncing请求的BlocksByRange
     backfill_requests: FnvHashMap<Id, BatchId>,
 
     /// Whether the ee is online. If it's not, we don't allow access to the
     /// `beacon_processor_send`.
+    /// ee是否在线，如果不是的话，我们不允许访问`beacon_processor_send`
     execution_engine_state: EngineState,
 
     /// Channel to send work to the beacon processor.
+    /// 发送work到beacon processor的channel
     beacon_processor_send: mpsc::Sender<WorkEvent<T>>,
 
     /// Logger for the `SyncNetworkContext`.

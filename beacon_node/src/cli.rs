@@ -243,6 +243,7 @@ pub fn cli_app<'a, 'b>() -> App<'a, 'b> {
         .arg(
             Arg::with_name("enable-private-discovery")
                 .long("enable-private-discovery")
+                // 默认情况下lighthouse不发现private IP地址，设置这个flag来使能对于local address的连接
                 .help("Lighthouse by default does not discover private IP addresses. Set this flag to enable connection attempts to local addresses.")
                 .takes_value(false),
         )

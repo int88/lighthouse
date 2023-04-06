@@ -508,6 +508,7 @@ where
             .map_err(|e| format!("Unable to initialize fork choice store: {e:?}"))?;
 
         let current_slot = Some(snapshot.beacon_block.slot());
+        // 初始化fork choice
         let fork_choice = ForkChoice::from_anchor(
             fc_store,
             snapshot.beacon_block_root,

@@ -122,12 +122,14 @@ pub enum SyncMessage<T: EthSpec> {
     },
 
     /// A batch has been processed by the block processor thread.
+    /// 已经被block processor thread处理的batch
     BatchProcessed {
         sync_type: ChainSegmentProcessId,
         result: BatchProcessResult,
     },
 
     /// Block processed
+    /// 被处理的block
     BlockProcessed {
         process_type: BlockProcessType,
         result: BlockProcessResult<T>,
@@ -178,6 +180,7 @@ pub struct SyncManager<T: BeaconChainTypes> {
     network_globals: Arc<NetworkGlobals<T::EthSpec>>,
 
     /// A receiving channel sent by the message processor thread.
+    /// 一个receiving channel，由message processor thread发送
     input_channel: mpsc::UnboundedReceiver<SyncMessage<T::EthSpec>>,
 
     /// A network context to contact the network service.
@@ -231,6 +234,7 @@ pub fn spawn<T: BeaconChainTypes>(
             log.clone(),
         ),
         range_sync: RangeSync::new(beacon_chain.clone(), log.clone()),
+        // 构建一个新的backfill syn的实例
         backfill_sync: BackFillSync::new(beacon_chain, network_globals, log.clone()),
         block_lookups: BlockLookups::new(log.clone()),
         log: log.clone(),
@@ -286,6 +290,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
     }
 
     /// Handles RPC errors related to requests that were emitted from the sync manager.
+    /// 处理RPC errors相关的请求，从sync manager出发
     fn inject_error(&mut self, peer_id: PeerId, request_id: RequestId) {
         trace!(self.log, "Sync manager received a failed RPC");
         match request_id {
@@ -440,18 +445,22 @@ impl<T: BeaconChainTypes> SyncManager<T> {
 
                     // If we would otherwise be synced, first check if we need to perform or
                     // complete a backfill sync.
+                    // 如果我们不同步，首先检查我们是否发需要执行或者完成一个backfill sync
                     if matches!(sync_state, SyncState::Synced) {
                         // Determine if we need to start/resume/restart a backfill sync.
+                        // 决定是否我们需要开始/继续/重启一个backfill sync
                         match self.backfill_sync.start(&mut self.network) {
                             Ok(SyncStart::Syncing {
                                 completed,
                                 remaining,
                             }) => {
+                                // 设置sync state
                                 sync_state = SyncState::BackFillSyncing {
                                     completed,
                                     remaining,
                                 };
                             }
+                            // 忽略对于state的更新，如果backfill sync state没有启动的话
                             Ok(SyncStart::NotSyncing) => {} // Ignore updating the state if the backfill sync state didn't start.
                             Err(e) => {
                                 error!(self.log, "Backfill sync failed to start"; "error" => ?e);
@@ -460,10 +469,12 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                     }
 
                     // Return the sync state if backfilling is not required.
+                    // 返回sync state，如果backfilling不需要的话
                     sync_state
                 }
                 Some((RangeSyncType::Finalized, start_slot, target_slot)) => {
                     // If there is a backfill sync in progress pause it.
+                    // 如果有一个backfill sync在进行中，停止它
                     self.backfill_sync.pause();
 
                     SyncState::SyncingFinalized {

@@ -239,6 +239,7 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
             }
 
             // Log if we are syncing
+            // 如果我们正在同步，记录日志
             if current_sync_state.is_syncing() {
                 metrics::set_gauge(&metrics::IS_SYNCED, 0);
                 let distance = format!(

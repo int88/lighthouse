@@ -443,10 +443,12 @@ pub fn get_config<E: EthSpec>(
     client_config.chain.checkpoint_sync_url_timeout =
         clap_utils::parse_required::<u64>(cli_args, "checkpoint-sync-url-timeout")?;
 
+    // 配置client_config.genesis
     client_config.genesis = if let Some(genesis_state_bytes) =
         eth2_network_config.genesis_state_bytes.clone()
     {
         // Set up weak subjectivity sync, or start from the hardcoded genesis state.
+        // 设置weak subjectivity sync，或者从硬编码的genesis state启动
         if let (Some(initial_state_path), Some(initial_block_path)) = (
             cli_args.value_of("checkpoint-state"),
             cli_args.value_of("checkpoint-block"),

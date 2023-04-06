@@ -1,5 +1,7 @@
 //! This service keeps track of which sync committee subnet the beacon node should be subscribed to at any
 //! given time. It schedules subscriptions to sync committee subnets and requests peer discoveries.
+//! 这个service追踪哪个sync committee subnet，这个beacon node应该追踪，在给定的任何时间
+//! 它调度对于sync committee subnets的订阅并且请求peer discoveries
 
 use std::collections::{hash_map::Entry, HashMap, VecDeque};
 use std::pin::Pin;

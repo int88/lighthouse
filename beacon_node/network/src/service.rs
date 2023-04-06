@@ -166,12 +166,15 @@ impl<E: EthSpec> NetworkSenders<E> {
 }
 
 /// Service that handles communication between internal services and the `lighthouse_network` network service.
+/// Service处理internal services和`lighthouse_network` network service之间的沟通
 pub struct NetworkService<T: BeaconChainTypes> {
     /// A reference to the underlying beacon chain.
     beacon_chain: Arc<BeaconChain<T>>,
     /// The underlying libp2p service that drives all the network interactions.
+    /// 底层的libp2p service，驱动所有network的交互
     libp2p: Network<RequestId, T::EthSpec>,
     /// An attestation and subnet manager service.
+    /// 一个attestation以及subset manager service
     attestation_service: AttestationService<T>,
     /// A sync committeee subnet manager service.
     sync_committee_service: SyncCommitteeService<T>,

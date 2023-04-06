@@ -1,18 +1,26 @@
 //! Provides the `BeaconProcessor`, a multi-threaded processor for messages received on the network
 //! that need to be processed by the `BeaconChain`.
+//! 提供`BeaconProcessor`，一个多线程的processor，对于从network中接收来的messages，需要被`BeaconChain`处理
 //!
 //! Uses `tokio` tasks (instead of raw threads) to provide the following tasks:
+//! 使用`tokio`tasks（而不是raw threads）来提供以下tasks：
 //!
 //! - A "manager" task, which either spawns worker tasks or enqueues work.
+//! - 一个"manager" task，要么生成worker tasks或者将work入队
 //! - One or more "worker" tasks which perform time-intensive work on the `BeaconChain`.
+//! - 一个或者多个"worker" tasks,在`BeaconChain`上执行时间密集型任务
 //! - A task managing the scheduling of work that needs to be re-processed.
+//! - 一个task管理work的调度，那些需要被重新处理
 //!
 //! ## Purpose
 //!
 //! The purpose of the `BeaconProcessor` is to provide two things:
+//! `BeaconProcessor`有如下两个目的：
 //!
 //! 1. Moving long-running, blocking tasks off the main `tokio` executor.
+//! 1. 将长期运行的，blocking task从`tokio` executor移除
 //! 2. A fixed-length buffer for consensus messages.
+//! 2. 一个固定长度的buffer用于consensus messages
 //!
 //! (1) ensures that we don't clog up the networking stack with long-running tasks, potentially
 //! causing timeouts. (2) means that we can easily and explicitly reject messages when we're
@@ -28,15 +36,21 @@
 //! - A work ready for reprocessing (work event).
 //!
 //! Then, there is a maximum of `n` "worker" blocking threads, where `n` is the CPU count.
+//! 有最多`n`个"worker" blocking threads，其中`n`是CPU的数目
 //!
 //! Whenever the manager receives a new parcel of work, it is either:
+//! 当manager接收到一个新的work，它要么：
 //!
 //! - Provided to a newly-spawned worker tasks (if we are not already at `n` workers).
+//! - 提供新生成的worker tasks（如果我们还没在`n`个workers）
 //! - Added to a queue.
+//! - 添加到队列中
 //!
 //! Whenever the manager receives a notification that a worker has finished a parcel of work, it
 //! checks the queues to see if there are more parcels of work that can be spawned in a new worker
 //! task.
+//! 当manager接收到一个通知，一个worker已经结束了一批work，它检查队列，查看是否有更多的work，可以在新的worker
+//! task生成
 
 use crate::sync::manager::BlockProcessType;
 use crate::{metrics, service::NetworkMessage, sync::SyncMessage};
@@ -973,6 +987,7 @@ impl<T: BeaconChainTypes> Stream for InboundEvents<T> {
 
 /// A mutli-threaded processor for messages received on the network
 /// that need to be processed by the `BeaconChain`
+/// 一个多线程的processor，对于从网络中接收到的messages，需要被`BeaconChain`处理
 ///
 /// See module level documentation for more information.
 pub struct BeaconProcessor<T: BeaconChainTypes> {
@@ -1500,6 +1515,7 @@ impl<T: BeaconChainTypes> BeaconProcessor<T> {
     }
 
     /// Spawns a blocking worker thread to process some `Work`.
+    /// 生成一个blocking worker thread，用于处理一些`Work`
     ///
     /// Sends an message on `idle_tx` when the work is complete and the task is stopping.
     fn spawn_worker(&mut self, work: Work<T>, toolbox: Toolbox<T>) {
