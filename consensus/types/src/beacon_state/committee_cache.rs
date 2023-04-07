@@ -19,6 +19,7 @@ four_byte_option_impl!(four_byte_option_non_zero_usize, NonZeroUsize);
 
 /// Computes and stores the shuffling for an epoch. Provides various getters to allow callers to
 /// read the committees for the given epoch.
+/// 计算并且存储一个epoch的shuffling，提供各种getters用于允许callers来读取committees，对于给定的epoch
 #[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
 pub struct CommitteeCache {
     #[ssz(with = "four_byte_option_epoch")]

@@ -1,5 +1,6 @@
 //! This module exposes a superset of the `types` crate. It adds additional types that are only
 //! required for the HTTP API.
+//! 这个module暴露了`types` crate的一个超集，它增加额外的类型，只会在HTTP API中使用
 
 use crate::Error as ServerError;
 use lighthouse_network::{ConnectionDirection, Enr, Multiaddr, PeerConnectionStatus};

@@ -62,12 +62,15 @@ impl From<BlockProcessingError> for BlockReplayError {
 }
 
 /// Defines how state roots should be computed during block replay.
+/// 定义在block replay的时候，state roots应该如何计算
 #[derive(PartialEq)]
 pub enum StateRootStrategy {
     /// Perform all transitions faithfully to the specification.
+    /// 可信地执行所有的transitions
     Accurate,
     /// Don't compute state roots, eventually computing an invalid beacon state that can only be
     /// used for obtaining shuffling.
+    /// 不要计算state roots，最终计算一个非法的beacon state，可以用于获取shuffling
     Inconsistent,
 }
 

@@ -52,18 +52,22 @@ pub struct HotColdDB<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> {
     ///
     /// States with slots less than `split.slot` are in the cold DB, while states with slots
     /// greater than or equal are in the hot DB.
+    /// slots小于`split.slot`的states存放在cold DB，同时slots大于等于的states则放在hot DB
     pub(crate) split: RwLock<Split>,
     /// The starting slots for the range of blocks & states stored in the database.
     /// 对于一系列存储在数据库中的blocks & states的starting slots
     anchor_info: RwLock<Option<AnchorInfo>>,
     pub(crate) config: StoreConfig,
     /// Cold database containing compact historical data.
+    /// Cold database包含压缩后的历史数据
     pub cold_db: Cold,
     /// Hot database containing duplicated but quick-to-access recent data.
+    /// Hot database包含了重复但是能快速访问的recent data
     ///
     /// The hot database also contains all blocks.
     pub hot_db: Hot,
     /// LRU cache of deserialized blocks. Updated whenever a block is loaded.
+    /// 反序列化blocks的LRU cache，当block加载的时候更新
     block_cache: Mutex<LruCache<Hash256, SignedBeaconBlock<E>>>,
     /// Chain spec.
     pub(crate) spec: ChainSpec,
@@ -144,8 +148,10 @@ impl<E: EthSpec> HotColdDB<E, MemoryStore<E>, MemoryStore<E>> {
 
 impl<E: EthSpec> HotColdDB<E, LevelDB<E>, LevelDB<E>> {
     /// Open a new or existing database, with the given paths to the hot and cold DBs.
+    /// 打开一个新的或者已经存在的数据库，给定的路径作为hot以及cold DBs
     ///
     /// The `slots_per_restore_point` parameter must be a divisor of `SLOTS_PER_HISTORICAL_ROOT`.
+    /// 参数`slots_per_restore_point`必须是`SLOTS_PER_HISTORICAL_ROOT`的除数
     ///
     /// The `migrate_schema` function is passed in so that the parent `BeaconChain` can provide
     /// context and access `BeaconChain`-level code without creating a circular dependency.
@@ -159,6 +165,7 @@ impl<E: EthSpec> HotColdDB<E, LevelDB<E>, LevelDB<E>> {
     ) -> Result<Arc<Self>, Error> {
         Self::verify_slots_per_restore_point(config.slots_per_restore_point)?;
 
+        // 构建hot cold db
         let mut db = HotColdDB {
             split: RwLock::new(Split::default()),
             anchor_info: RwLock::new(None),
@@ -174,6 +181,8 @@ impl<E: EthSpec> HotColdDB<E, LevelDB<E>, LevelDB<E>> {
         // Allow the slots-per-restore-point value to stay at the previous default if the config
         // uses the new default. Don't error on a failed read because the config itself may need
         // migrating.
+        // 允许slots-per-restore-point保持在之前的默认值，如果config使用以新的默认值，不要返回error，在
+        // failed state，因为config自身需要migrating
         if let Ok(Some(disk_config)) = db.load_config() {
             if !db.config.slots_per_restore_point_set_explicitly
                 && disk_config.slots_per_restore_point == PREV_DEFAULT_SLOTS_PER_RESTORE_POINT
@@ -187,6 +196,7 @@ impl<E: EthSpec> HotColdDB<E, LevelDB<E>, LevelDB<E>> {
                 );
 
                 // Mutate the in-memory config so that it's compatible.
+                // 修改内存中的配置，这样就能兼容
                 db.config.slots_per_restore_point = PREV_DEFAULT_SLOTS_PER_RESTORE_POINT;
             }
         }
@@ -194,6 +204,8 @@ impl<E: EthSpec> HotColdDB<E, LevelDB<E>, LevelDB<E>> {
         // Load the previous split slot from the database (if any). This ensures we can
         // stop and restart correctly. This needs to occur *before* running any migrations
         // because some migrations load states and depend on the split.
+        // 从数据库中加载split slot（如果有的话），这确保我们能正确停止和重启，这需要在任何migrations
+        // 之前发生，因为migrations加载state依赖split
         if let Some(split) = db.load_split()? {
             *db.split.write() = split;
             *db.anchor_info.write() = db.load_anchor_info()?;
@@ -228,9 +240,11 @@ impl<E: EthSpec> HotColdDB<E, LevelDB<E>, LevelDB<E>> {
         db.store_config()?;
 
         // Run a garbage collection pass.
+        // 运行gc
         db.remove_garbage()?;
 
         // If configured, run a foreground compaction pass.
+        // 如果配置了，运行一个前台的compaction pass
         if db.config.compact_on_init {
             info!(db.log, "Running foreground compaction");
             db.compact()?;
@@ -264,16 +278,19 @@ impl<E: EthSpec> HotColdDB<E, LevelDB<E>, LevelDB<E>> {
 
 impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> {
     /// Store a block and update the LRU cache.
+    /// 存储一个block并且更新LRU cache
     pub fn put_block(
         &self,
         block_root: &Hash256,
         block: SignedBeaconBlock<E>,
     ) -> Result<(), Error> {
         // Store on disk.
+        // 存储到磁盘
         let mut ops = Vec::with_capacity(2);
         let block = self.block_as_kv_store_ops(block_root, block, &mut ops)?;
         self.hot_db.do_atomically(ops)?;
         // Update cache.
+        // 更新cache
         self.block_cache.lock().put(*block_root, block);
         Ok(())
     }
@@ -496,18 +513,22 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Store a state in the store.
+    /// 将一个state放到store中
     pub fn put_state(&self, state_root: &Hash256, state: &BeaconState<E>) -> Result<(), Error> {
         let mut ops: Vec<KeyValueStoreOp> = Vec::new();
         if state.slot() < self.get_split_slot() {
+            // 存储在cold state中
             self.store_cold_state(state_root, state, &mut ops)?;
             self.cold_db.do_atomically(ops)
         } else {
+            // 存储在hot state中
             self.store_hot_state(state_root, state, &mut ops)?;
             self.hot_db.do_atomically(ops)
         }
     }
 
     /// Fetch a state from the store.
+    /// 从store中获取一个state
     ///
     /// If `slot` is provided then it will be used as a hint as to which database should
     /// be checked. Importantly, if the slot hint is provided and indicates a slot that lies
@@ -515,6 +536,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     /// will be returned if the provided `state_root` doesn't match the state root of the
     /// frozen state at `slot`. Consequently, if a state from a non-canonical chain is desired, it's
     /// best to set `slot` to `None`, or call `load_hot_state` directly.
+    /// 如果提供了`slot`，那它会被作为一个hint，用来查找db，重要的是，提供了slot hint并且表明slot存在于
+    /// freezer database，那么只有freezer database会被访问并且`Ok(None)`被返回，如果提供的`state_root`
+    /// 不匹配在`slot`存储的frozen state的state root，如果需要的是一个non-canonical chain的state
+    /// 它最好设置`slot`为`None`，或者直接调用`load_hot_state`
     pub fn get_state(
         &self,
         state_root: &Hash256,
@@ -528,13 +553,18 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 // frozen state using `load_cold_state_by_slot`, that would be incorrect
                 // in the case where the caller provides a `state_root` that's off the canonical
                 // chain. This way we avoid returning a state that doesn't match `state_root`.
+                // 尽管我们可以避免一次DB查询，通过使用`load_cold_state_by_slot`查找frozen state
+                // 这会不正确，万一caller提供一个`state_root`，不在canonical chain，这种方法我们可以避免
+                // 返回一个state，不匹配`state_root`
                 self.load_cold_state(state_root)
             } else {
                 self.load_hot_state(state_root, StateRootStrategy::Accurate)
             }
         } else {
+            // 首先加载hot state
             match self.load_hot_state(state_root, StateRootStrategy::Accurate)? {
                 Some(state) => Ok(Some(state)),
+                // hot state不存在的话，加载cold state
                 None => self.load_cold_state(state_root),
             }
         }
@@ -543,14 +573,19 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     /// Fetch a state from the store, but don't compute all of the values when replaying blocks
     /// upon that state (e.g., state roots). Additionally, only states from the hot store are
     /// returned.
+    /// 从store中获取一个state，不要计算所有的值，当重放blocks到state（例如，state root），另外，只有
+    /// 来自hot store的states才被返回
     ///
     /// See `Self::get_state` for information about `slot`.
+    /// 查看`Self::get_state`关于`slot`的信息
     ///
     /// ## Warning
     ///
     /// The returned state **is not a valid beacon state**, it can only be used for obtaining
     /// shuffling to process attestations. At least the following components of the state will be
     /// broken/invalid:
+    /// 返回的state ***不是一个合法的beacon state*，它只能用于获取shuffling来处理attestations，至少state
+    /// 的如下组件会是broken/非法的
     ///
     /// - `state.state_roots`
     /// - `state.block_roots`
@@ -576,17 +611,23 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Delete a state, ensuring it is removed from the LRU cache, as well as from on-disk.
+    /// 删除一个state，确保它从LRU cache中移除，以及从on-disk
     ///
     /// It is assumed that all states being deleted reside in the hot DB, even if their slot is less
     /// than the split point. You shouldn't delete states from the finalized portion of the chain
     /// (which are frozen, and won't be deleted), or valid descendents of the finalized checkpoint
     /// (which will be deleted by this function but shouldn't be).
+    /// 它假设所有被删除的states存在于hot DB中，即使它们的slot比split point更小，我们不能从chain的finalized部分
+    /// 删除states（它们是frozen的，不能被删除），或者finalized checkpoint合法的descendants
+    /// （会被这个函数删除，但是不应该）
     pub fn delete_state(&self, state_root: &Hash256, slot: Slot) -> Result<(), Error> {
         // Delete the state summary.
+        // 删除state summary
         self.hot_db
             .key_delete(DBColumn::BeaconStateSummary.into(), state_root.as_bytes())?;
 
         // Delete the full state if it lies on an epoch boundary.
+        // 删除full state，如果在epoch boundary
         if slot % E::slots_per_epoch() == 0 {
             self.hot_db
                 .key_delete(DBColumn::BeaconState.into(), state_root.as_bytes())?;
@@ -648,8 +689,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load an epoch boundary state by using the hot state summary look-up.
+    /// 加载一个epoch boundary state，通过使用hot state summary look-up
     ///
     /// Will fall back to the cold DB if a hot state summary is not found.
+    /// 会回到cold DB，如果没有找到一个hot state summary
     pub fn load_epoch_boundary_state(
         &self,
         state_root: &Hash256,
@@ -660,9 +703,12 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         }) = self.load_hot_state_summary(state_root)?
         {
             // NOTE: minor inefficiency here because we load an unnecessary hot state summary
+            // 注意：这里有点inefficiency，因为我们加载了一个非必须的hot state summary
             //
             // `StateRootStrategy` should be irrelevant here since we never replay blocks for an epoch
             // boundary state in the hot DB.
+            // `StateRootStrategy`应该是无关的，因为我们从不需要replay blocks，对于在hot DB中的一个epoch
+            // boundary state
             let state = self
                 .load_hot_state(&epoch_boundary_state_root, StateRootStrategy::Accurate)?
                 .ok_or(HotColdDBError::MissingEpochBoundaryState(
@@ -671,6 +717,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             Ok(Some(state))
         } else {
             // Try the cold DB
+            // 试着从cold DB加载
             match self.load_cold_state_slot(state_root)? {
                 Some(state_slot) => {
                     let epoch_boundary_slot =
@@ -695,6 +742,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Convert a batch of `StoreOp` to a batch of `KeyValueStoreOp`.
+    /// 转换一批的`StoreOp`到一批的`KeyValueStoreOp`
     pub fn convert_to_kv_batch(
         &self,
         batch: Vec<StoreOp<E>>,
@@ -711,10 +759,12 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 }
 
                 StoreOp::PutState(state_root, state) => {
+                    // 放入state
                     self.store_hot_state(&state_root, state, &mut key_value_batch)?;
                 }
 
                 StoreOp::PutStateSummary(state_root, summary) => {
+                    // 放入state summary
                     key_value_batch.push(summary.as_kv_store_op(state_root));
                 }
 
@@ -761,6 +811,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     pub fn do_atomically(&self, batch: Vec<StoreOp<E>>) -> Result<(), Error> {
         // Update the block cache whilst holding a lock, to ensure that the cache updates atomically
         // with the database.
+        // 更新block cache，同时维护一个锁，来确保cache在数据库中原子更新
         let mut guard = self.block_cache.lock();
 
         for op in &batch {
@@ -814,10 +865,12 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         if state.slot() % E::slots_per_epoch() == 0 {
             trace!(
                 self.log,
+                // 在epoch boundary，存放完整的full state
                 "Storing full state on epoch boundary";
                 "slot" => state.slot().as_u64(),
                 "state_root" => format!("{:?}", state_root)
             );
+            // 存储完整的state
             store_full_state(state_root, state, ops)?;
         }
 
@@ -828,6 +881,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         // 当我们用state root进行查找的时候
         let hot_state_summary = HotStateSummary::new(state_root, state)?;
         let op = hot_state_summary.as_kv_store_op(*state_root);
+        // 推入到ops
         ops.push(op);
 
         Ok(())
@@ -890,17 +944,21 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Store a pre-finalization state in the freezer database.
+    /// 在freezer database存储在一个pre-finalization state中
     ///
     /// If the state doesn't lie on a restore point boundary then just its summary will be stored.
+    /// 如果state不在一个restore point boundary，那么只有它的summary被存储
     pub fn store_cold_state(
         &self,
         state_root: &Hash256,
         state: &BeaconState<E>,
         ops: &mut Vec<KeyValueStoreOp>,
     ) -> Result<(), Error> {
+        // 默认都先存储ColdStateSummary
         ops.push(ColdStateSummary { slot: state.slot() }.as_kv_store_op(*state_root));
 
         if state.slot() % self.config.slots_per_restore_point != 0 {
+            // 不是在restore point，则返回
             return Ok(());
         }
 
@@ -912,11 +970,13 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         );
 
         // 1. Convert to PartialBeaconState and store that in the DB.
+        // 2. 转换为PartialBeaconState并且保存在DB中
         let partial_state = PartialBeaconState::from_state_forgetful(state);
         let op = partial_state.as_kv_store_op(*state_root);
         ops.push(op);
 
         // 2. Store updated vector entries.
+        // 2. 存储更新的vector entries
         let db = &self.cold_db;
         store_updated_vector(BlockRoots, db, state, &self.spec, ops)?;
         store_updated_vector(StateRoots, db, state, &self.spec, ops)?;
@@ -925,6 +985,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         store_updated_vector(HistoricalSummaries, db, state, &self.spec, ops)?;
 
         // 3. Store restore point.
+        // 3. 存储restore point
         let restore_point_index = state.slot().as_u64() / self.config.slots_per_restore_point;
         self.store_restore_point_hash(restore_point_index, *state_root, ops);
 
@@ -932,8 +993,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Try to load a pre-finalization state from the freezer database.
+    /// 试着从freezer database中加载一个pre-finalization state
     ///
     /// Return `None` if no state with `state_root` lies in the freezer.
+    /// 返回`None`，如果没有`state_root`对应的state存在于freezer中
     pub fn load_cold_state(&self, state_root: &Hash256) -> Result<Option<BeaconState<E>>, Error> {
         match self.load_cold_state_slot(state_root)? {
             Some(slot) => self.load_cold_state_by_slot(slot),
@@ -942,19 +1005,25 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load a pre-finalization state from the freezer database.
+    /// 加载一个pre-finalization state，从freezer database
     ///
     /// Will reconstruct the state if it lies between restore points.
+    /// 会重构state，如果它在restore points之间
     pub fn load_cold_state_by_slot(&self, slot: Slot) -> Result<Option<BeaconState<E>>, Error> {
         // Guard against fetching states that do not exist due to gaps in the historic state
         // database, which can occur due to checkpoint sync or re-indexing.
         // See the comments in `get_historic_state_limits` for more information.
+        // 防范获取因为historical state database的gaps而不存在的states
+        // 可能因为checkpoint sync或者re-indexing
         let (lower_limit, upper_limit) = self.get_historic_state_limits();
 
         if slot <= lower_limit || slot >= upper_limit {
             if slot % self.config.slots_per_restore_point == 0 {
                 let restore_point_idx = slot.as_u64() / self.config.slots_per_restore_point;
+                // 通过restore_point_idx加载restore point
                 self.load_restore_point_by_index(restore_point_idx)
             } else {
+                // 加载cold中间state
                 self.load_cold_intermediate_state(slot)
             }
             .map(Some)
@@ -964,6 +1033,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load a restore point state by its `state_root`.
+    /// 通过`state_root`加载一个restore point state
     fn load_restore_point(&self, state_root: &Hash256) -> Result<BeaconState<E>, Error> {
         let partial_state_bytes = self
             .cold_db
@@ -992,6 +1062,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load a frozen state that lies between restore points.
+    /// 加载restore points之间的frozen state
     fn load_cold_intermediate_state(&self, slot: Slot) -> Result<BeaconState<E>, Error> {
         // 1. Load the restore points either side of the intermediate state.
         let low_restore_point_idx = slot.as_u64() / self.config.slots_per_restore_point;
@@ -1004,6 +1075,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         let high_restore_point = self.get_restore_point(high_restore_point_idx, &split)?;
 
         // 2. Load the blocks from the high restore point back to the low restore point.
+        // 2. 加载blocks从high restore point到low restore point
         let blocks = self.load_blocks_to_replay(
             low_restore_point.slot(),
             slot,
@@ -1011,6 +1083,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         )?;
 
         // 3. Replay the blocks on top of the low restore point.
+        // 3. 在low restore point之上重放blocks
         // Use a forwards state root iterator to avoid doing any tree hashing.
         // The state root of the high restore point should never be used, so is safely set to 0.
         let state_root_iter = self.forwards_state_roots_iterator_until(
@@ -1063,9 +1136,11 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load the blocks between `start_slot` and `end_slot` by backtracking from `end_block_hash`.
+    /// 加载`start_slot`和`end_slot`之间的blocks，从`end_block_hash`开始backtracking
     ///
     /// Blocks are returned in slot-ascending order, suitable for replaying on a state with slot
     /// equal to `start_slot`, to reach a state with slot equal to `end_slot`.
+    /// Blocks通过slot递增的顺序返回，适用于重放一个state，从`start_slot`到和`end_slot`相等
     pub fn load_blocks_to_replay(
         &self,
         start_slot: Slot,
@@ -1076,6 +1151,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             .map(|result| result.map(|(_, block)| block))
             // Include the block at the end slot (if any), it needs to be
             // replayed in order to construct the canonical state at `end_slot`.
+            // 包含在end slot的block（如果有的话），它需要按序重放，为了构建`end_slot`的canonical state
             .filter(|result| {
                 result
                     .as_ref()
@@ -1083,6 +1159,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             })
             // Include the block at the start slot (if any). Whilst it doesn't need to be
             // applied to the state, it contains a potentially useful state root.
+            // 包含在start slot的block（如果有的话），同时它不需要应用到state，它包含一个可能有用的state root
             //
             // Return `true` on an `Err` so that the `collect` fails, unless the error is a
             // `BlockNotFound` error and some blocks are intentionally missing from the DB.
@@ -1103,9 +1180,11 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Replay `blocks` on top of `state` until `target_slot` is reached.
+    /// 在`state`之上重放`blocks`直到到达`target_slot`
     ///
     /// Will skip slots as necessary. The returned state is not guaranteed
     /// to have any caches built, beyond those immediately required by block processing.
+    /// 会按需跳过slots，返回的state不保证有任何的caches被构建，超出了块处理所需的范围
     fn replay_blocks(
         &self,
         state: BeaconState<E>,
@@ -1150,6 +1229,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Fetch a copy of the current split slot from memory.
+    /// 从内存中获取当前的split slot的一个copy
     pub fn get_split_slot(&self) -> Slot {
         self.split.read_recursive().slot
     }
@@ -1377,6 +1457,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load a frozen state's slot, given its root.
+    /// 加载一个frozen state的slot，给定它的root
     pub fn load_cold_state_slot(&self, state_root: &Hash256) -> Result<Option<Slot>, Error> {
         Ok(self
             .cold_db
@@ -1590,6 +1671,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
 }
 
 /// Advance the split point of the store, moving new finalized states to the freezer.
+/// 提前store的split point，将新的finalized states移动到freezer
 pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
     store: Arc<HotColdDB<E, Hot, Cold>>,
     frozen_head_root: Hash256,
@@ -1729,6 +1811,7 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
 }
 
 /// Struct for storing the split slot and state root in the database.
+/// 在数据库中用于存储split slot和state root的结构
 #[derive(Debug, Clone, Copy, PartialEq, Default, Encode, Decode, Deserialize, Serialize)]
 pub struct Split {
     pub(crate) slot: Slot,
@@ -1806,6 +1889,7 @@ impl HotStateSummary {
 }
 
 /// Struct for summarising a state in the freezer database.
+/// 一个结构用于统计一个state，在freezer database中
 #[derive(Debug, Clone, Copy, Default, Encode, Decode)]
 pub(crate) struct ColdStateSummary {
     pub slot: Slot,

@@ -7,6 +7,7 @@ use types::{BeaconState, Checkpoint, EthSpec, Fork, Hash256, Slot};
 
 /// Wraps `eth2::types::StateId` and provides common state-access functionality. E.g., reading
 /// states or parts of states from the database.
+/// 封装`eth2::types::StateId`并且提供公共的state-access功能，例如，读取states或者states的一部分，从db中
 #[derive(Debug)]
 pub struct StateId(pub CoreStateId);
 
@@ -54,6 +55,7 @@ impl StateId {
             CoreStateId::Root(root) => {
                 if let Some(hot_summary) = chain
                     .store
+                    // 首先试着访问hot state summary
                     .load_hot_state_summary(root)
                     .map_err(BeaconChainError::DBError)
                     .map_err(warp_utils::reject::beacon_chain_error)?
@@ -67,7 +69,7 @@ impl StateId {
                     return Ok((*root, execution_optimistic));
                 } else if let Some(_cold_state_slot) = chain
                     .store
-                    // 从cold state中加载
+                    // 从cold state中加载slot
                     .load_cold_state_slot(root)
                     .map_err(BeaconChainError::DBError)
                     .map_err(warp_utils::reject::beacon_chain_error)?
@@ -103,7 +105,9 @@ impl StateId {
     }
 
     /// Return the `fork` field of the state identified by `self`.
+    /// 返回由`self`标识的state的`fork`字段
     /// Also returns the `execution_optimistic` value of the state.
+    /// 同时返回state的`execution_optimistic`字段
     pub fn fork_and_execution_optimistic<T: BeaconChainTypes>(
         &self,
         chain: &BeaconChain<T>,

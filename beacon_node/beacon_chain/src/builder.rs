@@ -342,6 +342,7 @@ where
         let beacon_state_root = beacon_block.message().state_root();
         let beacon_block_root = beacon_block.canonical_root();
 
+        // 存储genesis state和genesis block
         store
             .put_state(&beacon_state_root, &beacon_state)
             .map_err(|e| format!("Failed to store genesis state: {:?}", e))?;

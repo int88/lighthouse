@@ -1059,6 +1059,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Returns the state at the given root, if any.
+    /// 返回在给定root的state，如果有的话
     ///
     /// ## Errors
     ///

@@ -72,6 +72,7 @@ pub trait KeyValueStore<E: EthSpec>: Sync + Send + Sized + 'static {
     fn key_delete(&self, column: &str, key: &[u8]) -> Result<(), Error>;
 
     /// Execute either all of the operations in `batch` or none at all, returning an error.
+    /// 要么执行`batch`中的所有operations，或者什么都不做，返回一个error
     fn do_atomically(&self, batch: Vec<KeyValueStoreOp>) -> Result<(), Error>;
 
     /// Return a mutex guard that can be used to synchronize sensitive transactions.
@@ -180,6 +181,7 @@ pub enum DBColumn {
     #[strum(serialize = "ste")]
     BeaconState,
     /// For the mapping from state roots to their slots or summaries.
+    /// 映射state roots到它们的slots或者summaries
     #[strum(serialize = "bss")]
     BeaconStateSummary,
     /// For the list of temporary states stored during block import,
@@ -237,6 +239,7 @@ impl DBColumn {
 }
 
 /// An item that may stored in a `Store` by serializing and deserializing from bytes.
+/// 一个item可能存储在一个`Store`中，通过从bytes序列化和反序列化
 pub trait StoreItem: Sized {
     /// Identifies which column this item should be placed in.
     fn db_column() -> DBColumn;

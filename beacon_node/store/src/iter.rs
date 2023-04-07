@@ -8,11 +8,13 @@ use types::{
 };
 
 /// Implemented for types that have ancestors (e.g., blocks, states) that may be iterated over.
+/// 有ancestors的类型的实现（例如，blocks，states），可以用于遍历
 ///
 /// ## Note
 ///
 /// It is assumed that all ancestors for this object are stored in the database. If this is not the
 /// case, the iterator will start returning `None` prior to genesis.
+/// 它假设这个对象的所有ancestors存储在database中，如果不是这样的，则iterator会返回`None`，在genesis之前
 pub trait AncestorIter<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>, I: Iterator> {
     /// Returns an iterator over the roots of the ancestors of `self`.
     fn try_iter_ancestor_roots(&self, store: &'a HotColdDB<E, Hot, Cold>) -> Option<I>;

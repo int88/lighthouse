@@ -12,10 +12,12 @@ pub const DEFAULT_BLOCK_CACHE_SIZE: usize = 5;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StoreConfig {
     /// Number of slots to wait between storing restore points in the freezer database.
+    /// 存储在freezer database的restroe points之间的slots的数目
     pub slots_per_restore_point: u64,
     /// Flag indicating whether the `slots_per_restore_point` was set explicitly by the user.
     pub slots_per_restore_point_set_explicitly: bool,
     /// Maximum number of blocks to store in the in-memory block cache.
+    /// 存储在内存中的block cache的blocks的最大值
     pub block_cache_size: usize,
     /// Whether to compact the database on initialization.
     pub compact_on_init: bool,

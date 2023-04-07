@@ -88,6 +88,7 @@ const SYNC_TOLERANCE_EPOCHS: u64 = 8;
 type HttpServer = (SocketAddr, Pin<Box<dyn Future<Output = ()> + Send>>);
 
 /// Alias for readability.
+/// 为了可读性的别名
 pub type ExecutionOptimistic = bool;
 
 /// Configuration used when serving the HTTP server over TLS.

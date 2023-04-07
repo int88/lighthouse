@@ -274,6 +274,7 @@ impl<T: BeaconChainTypes> CanonicalHead<T> {
 
     /// Load a persisted version of `BeaconForkChoice` from the `store` and restore `self` to that
     /// state.
+    /// 加载一个持久化版本的`BeaconForkChoice`从`store`并且存储`self`到那个state
     ///
     /// This is useful if some database corruption is expected and we wish to go back to our last
     /// save-point.

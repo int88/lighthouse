@@ -14,15 +14,18 @@ use std::marker::PhantomData;
 use std::path::Path;
 
 /// A wrapped leveldb database.
+/// 一个封装的leveldb数据库
 pub struct LevelDB<E: EthSpec> {
     db: Database<BytesKey>,
     /// A mutex to synchronise sensitive read-write transactions.
+    /// 一个mutex用于同步敏感的read-write transaction
     transaction_mutex: Mutex<()>,
     _phantom: PhantomData<E>,
 }
 
 impl<E: EthSpec> LevelDB<E> {
     /// Open a database at `path`, creating a new database if one does not already exist.
+    /// 打开在`path`上的一个数据库 ，创建一个新的数据库，如果不存在的话
     pub fn open(path: &Path) -> Result<Self, Error> {
         let mut options = Options::new();
 

@@ -1,4 +1,5 @@
 //! Garbage collection process that runs at start-up to clean up the database.
+//! 在开始的时候运行的GC用于清理数据库
 use crate::hot_cold_store::HotColdDB;
 use crate::{Error, LevelDB, StoreOp};
 use slog::debug;

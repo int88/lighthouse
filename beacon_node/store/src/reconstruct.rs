@@ -1,4 +1,5 @@
 //! Implementation of historic state reconstruction (given complete block history).
+//! 历史state重构的实现（给定完整的block history）
 use crate::hot_cold_store::{HotColdDB, HotColdDBError};
 use crate::{Error, ItemStore, KeyValueStore};
 use itertools::{process_results, Itertools};
