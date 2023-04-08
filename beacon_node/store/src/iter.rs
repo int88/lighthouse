@@ -151,6 +151,7 @@ impl<'a, T: EthSpec, Hot: ItemStore<T>, Cold: ItemStore<T>> Iterator
 }
 
 /// Iterator over state and block roots that backtracks using the vectors from a `BeaconState`.
+/// Iterator追踪遍历state以及block roots，使用来自`BeaconState`的vectors
 pub struct RootsIterator<'a, T: EthSpec, Hot: ItemStore<T>, Cold: ItemStore<T>> {
     store: &'a HotColdDB<T, Hot, Cold>,
     beacon_state: Cow<'a, BeaconState<T>>,

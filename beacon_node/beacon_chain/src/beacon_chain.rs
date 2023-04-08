@@ -323,6 +323,7 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// 用于生成async以及blocking tasks
     pub task_executor: TaskExecutor,
     /// Database migrator for running background maintenance on the store.
+    /// 后台运行的Database migrator用于维护store
     pub store_migrator: BackgroundMigrator<T::EthSpec, T::HotStore, T::ColdStore>,
     /// Reports the current slot, typically based upon the system clock.
     /// 报告当前的slot，基于系统时钟
@@ -2989,6 +2990,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .map(StoreOp::DeleteStateTemporaryFlag),
         );
         ops.push(StoreOp::PutBlock(block_root, signed_block.clone()));
+        // 写入state
         ops.push(StoreOp::PutState(block.state_root(), &state));
         let txn_lock = self.store.hot_db.begin_rw_transaction();
 
@@ -3089,6 +3091,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         );
 
         // Inform the unknown block cache, in case it was waiting on this block.
+        // 通知unknown block cache，万一它在等待这个block
         self.pre_finalization_block_cache
             .block_processed(block_root);
 

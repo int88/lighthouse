@@ -85,6 +85,8 @@ pub enum HotColdDBError {
     },
     /// Recoverable error indicating that the database freeze point couldn't be updated
     /// due to the finalized block not lying on an epoch boundary (should be infrequent).
+    /// 可恢复的错误，表明数据库的freeze point不应该被更新，由于finalized block，不是存在于epoch boundary
+    /// （不会很频繁）
     FreezeSlotUnaligned(Slot),
     FreezeSlotError {
         current_split_slot: Slot,
@@ -296,9 +298,11 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Prepare a signed beacon block for storage in the database.
+    /// 准备一个signed beacon block，存储到db中
     ///
     /// Return the original block for re-use after storage. It's passed by value so it can be
     /// cracked open and have its payload extracted.
+    /// 返回原始的block在存储之后重复使用，它通过值传递，这样它可以裂开并且有它的payload被抽取
     pub fn block_as_kv_store_ops(
         &self,
         key: &Hash256,
@@ -306,17 +310,21 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         ops: &mut Vec<KeyValueStoreOp>,
     ) -> Result<SignedBeaconBlock<E>, Error> {
         // Split block into blinded block and execution payload.
+        // 将block分裂为blinded block和execution payload
         let (blinded_block, payload) = block.into();
 
         // Store blinded block.
+        // 存储blinded block
         self.blinded_block_as_kv_store_ops(key, &blinded_block, ops);
 
         // Store execution payload if present.
+        // 存储execution payload，如果存在的话
         if let Some(ref execution_payload) = payload {
             ops.push(execution_payload.as_kv_store_op(*key));
         }
 
         // Re-construct block. This should always succeed.
+        // 重新构建block，它总是应该成功
         blinded_block
             .try_into_full_block(payload)
             .ok_or(Error::AddPayloadLogicError)
@@ -336,6 +344,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         ));
     }
 
+    // 试着获取完整的block
     pub fn try_get_full_block(
         &self,
         block_root: &Hash256,
@@ -343,12 +352,14 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         metrics::inc_counter(&metrics::BEACON_BLOCK_GET_COUNT);
 
         // Check the cache.
+        // 首先检查cache
         if let Some(block) = self.block_cache.lock().get(block_root) {
             metrics::inc_counter(&metrics::BEACON_BLOCK_CACHE_HIT_COUNT);
             return Ok(Some(DatabaseBlock::Full(block.clone())));
         }
 
         // Load the blinded block.
+        // 加载blinded block
         let blinded_block = match self.get_blinded_block(block_root)? {
             Some(block) => block,
             None => return Ok(None),
@@ -357,8 +368,11 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         // If the block is after the split point then we should have the full execution payload
         // stored in the database. If it isn't but payload pruning is disabled, try to load it
         // on-demand.
+        // 如果block在split point之后，那么我们应该有完整的execution payload存储在db中，如果不是，但是payload pruning被关闭
+        // 试着按需加载
         //
         // Hold the split lock so that it can't change while loading the payload.
+        // 持有split lock，这样它在加载payload的时候不会改变
         let split = self.split.read_recursive();
 
         let block = if blinded_block.message().execution_payload().is_err()
@@ -393,6 +407,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Fetch a full block with execution payload from the store.
+    /// 从store中获取一个full block，有着execution payload
     pub fn get_full_block(
         &self,
         block_root: &Hash256,
@@ -443,9 +458,11 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Fetch a block from the store using a custom decode function.
+    /// 从store获取一个block，使用自定义的decode函数
     ///
     /// This is useful for e.g. ignoring the slot-indicated fork to forcefully load a block as if it
     /// were for a different fork.
+    /// 这是有用的，比如对于忽略slot-indicated fork来强制记载一个block，仿佛它来自不同的fork
     pub fn get_block_with<Payload: AbstractExecPayload<E>>(
         &self,
         block_root: &Hash256,
@@ -496,6 +513,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Delete a block from the store and the block cache.
+    /// 删除一个block，从store以及block cache
     pub fn delete_block(&self, block_root: &Hash256) -> Result<(), Error> {
         self.block_cache.lock().pop(block_root);
         self.hot_db
@@ -880,6 +898,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         // 存储state的summary，我们甚至存储一个epoch boundary state，因为我们需要它们的slots
         // 当我们用state root进行查找的时候
         let hot_state_summary = HotStateSummary::new(state_root, state)?;
+        // 将state root作为key传入
         let op = hot_state_summary.as_kv_store_op(*state_root);
         // 推入到ops
         ops.push(op);
@@ -937,8 +956,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 )?
             };
 
+            // 返回state
             Ok(Some(state))
         } else {
+            // 如果hot state summary都没有，则直接返回None
             Ok(None)
         }
     }
@@ -1053,6 +1074,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load a restore point state by its `restore_point_index`.
+    /// 加载一个restore point state，通过它的`restore_point_index`
     fn load_restore_point_by_index(
         &self,
         restore_point_index: u64,
@@ -1103,6 +1125,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Get the restore point with the given index, or if it is out of bounds, the split state.
+    /// 获取给定index的restore point，或者如果它超出了范围，split state
     pub(crate) fn get_restore_point(
         &self,
         restore_point_idx: u64,
@@ -1297,6 +1320,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Get a clone of the store's anchor info.
+    /// 获取store的anchor信息的clone
     ///
     /// To do mutations, use `compare_and_set_anchor_info`.
     pub fn get_anchor_info(&self) -> Option<AnchorInfo> {
@@ -1304,9 +1328,11 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Atomically update the anchor info from `prev_value` to `new_value`.
+    /// 自动更新achor info，从`prev_value`到`new_value`
     ///
     /// Return a `KeyValueStoreOp` which should be written to disk, possibly atomically with other
     /// values.
+    /// 返回一个`KeyValueStoreOp`，它应该被写入磁盘，原子地，和其他值
     ///
     /// Return an `AnchorInfoConcurrentMutation` error if the `prev_value` provided
     /// is not correct.
@@ -1326,12 +1352,14 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// As for `compare_and_set_anchor_info`, but also writes the anchor to disk immediately.
+    /// 同时立即写入到磁盘
     pub fn compare_and_set_anchor_info_with_write(
         &self,
         prev_value: Option<AnchorInfo>,
         new_value: Option<AnchorInfo>,
     ) -> Result<(), Error> {
         let kv_store_op = self.compare_and_set_anchor_info(prev_value, new_value)?;
+        // 写入磁盘
         self.hot_db.do_atomically(vec![kv_store_op])
     }
 
@@ -1684,8 +1712,10 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
     );
 
     // 0. Check that the migration is sensible.
+    // 0. 检查migration是有意义的
     // The new frozen head must increase the current split slot, and lie on an epoch
     // boundary (in order for the hot state summary scheme to work).
+    // 新的frozen head必须增加当前的split slot，并且在epoch boundary（为了hot state summary scheme能work）
     let current_split_slot = store.split.read_recursive().slot;
     let anchor_slot = store
         .anchor_info
@@ -1709,6 +1739,8 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
 
     // 1. Copy all of the states between the head and the split slot, from the hot DB
     // to the cold DB. Delete the execution payloads of these now-finalized blocks.
+    // 1. 拷贝head以及split slot之间的states，从hot DB到cold DB，删除execution payloads，对于这些
+    // finalized blocks
     let state_root_iter = RootsIterator::new(&store, frozen_head);
     for maybe_tuple in state_root_iter.take_while(|result| match result {
         Ok((_, _, slot)) => {
@@ -1722,6 +1754,7 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
         let mut cold_db_ops: Vec<KeyValueStoreOp> = Vec::new();
 
         if slot % store.config.slots_per_restore_point == 0 {
+            // 获取full states
             let state: BeaconState<E> = get_full_state(&store.hot_db, &state_root, &store.spec)?
                 .ok_or(HotColdDBError::MissingStateToFreeze(state_root))?;
 
@@ -1730,21 +1763,27 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
 
         // Store a pointer from this state root to its slot, so we can later reconstruct states
         // from their state root alone.
+        // 存储一个pointer，从state root到它的slot，这样我们后面可以重构states，从它们的state root
         let cold_state_summary = ColdStateSummary { slot };
         let op = cold_state_summary.as_kv_store_op(state_root);
         cold_db_ops.push(op);
 
         // There are data dependencies between calls to `store_cold_state()` that prevent us from
         // doing one big call to `store.cold_db.do_atomically()` at end of the loop.
+        // 在`store_cold_state()`之间有依赖 ，防止我们做一次大的调用，对于`store.cold_db.do_atomically()`
+        // 在loop的结束
         store.cold_db.do_atomically(cold_db_ops)?;
 
         // Delete the old summary, and the full state if we lie on an epoch boundary.
+        // 删除old summary，以及full state，如果我们在epoch boundary
         hot_db_ops.push(StoreOp::DeleteState(state_root, Some(slot)));
 
         // Delete the execution payload if payload pruning is enabled. At a skipped slot we may
         // delete the payload for the finalized block itself, but that's OK as we only guarantee
         // that payloads are present for slots >= the split slot. The payload fetching code is also
         // forgiving of missing payloads.
+        // 删除execution payload，如果使能了payload pruning，在skipped slot，我们可能删除finalized block自己的
+        // payload
         if store.config.prune_payloads {
             hot_db_ops.push(StoreOp::DeleteExecutionPayload(block_root));
         }
@@ -1761,6 +1800,7 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
     // exceedingly rare event, this should be an acceptable tradeoff.
 
     // Flush to disk all the states that have just been migrated to the cold store.
+    // flush到磁盘，对于所有迁移到cold store的states
     store.cold_db.sync()?;
 
     {
@@ -1769,6 +1809,7 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
 
         // Detect a sitation where the split point is (erroneously) changed from more than one
         // place in code.
+        // 检测split point在代码中改变超过一次
         if latest_split_slot != current_split_slot {
             error!(
                 store.log,
@@ -1778,6 +1819,7 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
             );
 
             // Assume the freezing procedure will be retried in case this happens.
+            // 假设freezing procedure会被重试 ，万一发生的话
             return Err(Error::SplitPointModified(
                 current_split_slot,
                 latest_split_slot,
@@ -1786,6 +1828,8 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
 
         // Before updating the in-memory split value, we flush it to disk first, so that should the
         // OS process die at this point, we pick up from the right place after a restart.
+        // 在更新内存中的split value，我们首先刷到磁盘，因此即使OS进程在这个时候die，在重启之后，我们可以从
+        // 正确的地方开始
         let split = Split {
             slot: frozen_head.slot(),
             state_root: frozen_head_root,
@@ -1795,10 +1839,12 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
         // Split point is now persisted in the hot database on disk.  The in-memory split point
         // hasn't been modified elsewhere since we keep a write lock on it.  It's safe to update
         // the in-memory split point now.
+        // split point已经持久化到磁盘的hot db，内存中的split point没有改变，因为我们有一个write lock
         *split_guard = split;
     }
 
     // Delete the states from the hot database if we got this far.
+    // 从hot db中删除states，如果我们到了这么远
     store.do_atomically(hot_db_ops)?;
 
     debug!(
@@ -1882,7 +1928,9 @@ impl HotStateSummary {
 
         Ok(HotStateSummary {
             slot: state.slot(),
+            // 最新的block的root
             latest_block_root,
+            // epoch boundary的state root
             epoch_boundary_state_root,
         })
     }

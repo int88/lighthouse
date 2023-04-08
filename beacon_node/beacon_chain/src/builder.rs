@@ -418,7 +418,8 @@ where
         // Check that the given block lies on an epoch boundary. Due to the database only storing
         // full states on epoch boundaries and at restore points it would be difficult to support
         // starting from a mid-epoch state.
-        // 数据库只在epcoh boundaries存储full state
+        // 数据库只在epcoh boundaries存储full state并且在restore points，支持从mid-epoch state开始会非常
+        // 困难
         if weak_subj_slot % TEthSpec::slots_per_epoch() != 0 {
             return Err(format!(
                 "Checkpoint block at slot {} is not aligned to epoch start. \
@@ -431,6 +432,7 @@ where
         // 确认block以及state有着一致的slots以及state roots
         if weak_subj_state.slot() != weak_subj_block.slot() {
             return Err(format!(
+                // snapshot block的slot和snapshot state的不匹配
                 "Slot of snapshot block ({}) does not match snapshot state ({})",
                 weak_subj_block.slot(),
                 weak_subj_state.slot(),
@@ -439,6 +441,7 @@ where
 
         // Prime all caches before storing the state in the database and computing the tree hash
         // root.
+        // 准备所有的缓存，在存储state到database并且计算tree hash root之前
         weak_subj_state
             .build_all_caches(&self.spec)
             .map_err(|e| format!("Error building caches on checkpoint state: {e:?}"))?;
@@ -475,6 +478,7 @@ where
 
         // Write the state and block non-atomically, it doesn't matter if they're forgotten
         // about on a crash restart.
+        // 非原子地写入state和block，没关系如果他们在crash restart的时候被忘记
         store
             .put_state(&weak_subj_state_root, &weak_subj_state)
             .map_err(|e| format!("Failed to store weak subjectivity state: {:?}", e))?;
@@ -893,6 +897,7 @@ where
         );
 
         // Check for states to reconstruct (in the background).
+        // 检查需要重构的states（在后台）
         if beacon_chain.config.reconstruct_historic_states {
             beacon_chain.store_migrator.process_reconstruction();
         }

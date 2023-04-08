@@ -9,19 +9,24 @@ pub enum Error {
 }
 
 /// Maintains a list of `BeaconChain` head block roots and slots.
+/// 维护一系列的`BeaconChain`的head block roots以及slots
 ///
 /// Each time a new block is imported, it should be applied to the `Self::register_block` function.
 /// In order for this struct to be effective, every single block that is imported must be
 /// registered here.
+/// 每次导入一个新的block，它应该被应用到`Self::register_block`函数，为了这个结构能够高效，每次单个block导入
+/// 就必须在这里注册
 #[derive(Default, Debug)]
 pub struct HeadTracker(pub RwLock<HashMap<Hash256, Slot>>);
 
 impl HeadTracker {
     /// Register a block with `Self`, so it may or may not be included in a `Self::heads` call.
+    /// 用一个block注册，这样它可能或者不能被包含在`Self::heads`调用
     ///
     /// This function assumes that no block is imported without its parent having already been
     /// imported. It cannot detect an error if this is not the case, it is the responsibility of
     /// the upstream user.
+    /// 这个函数假设没有block被导入，如果它的parent没有被导入，它不能检测这个错误，这是upstream user的责任
     pub fn register_block(&self, block_root: Hash256, parent_root: Hash256, slot: Slot) {
         let mut map = self.0.write();
         map.remove(&parent_root);
@@ -34,6 +39,7 @@ impl HeadTracker {
     }
 
     /// Returns the list of heads in the chain.
+    /// 返回chain的一系列heads
     pub fn heads(&self) -> Vec<(Hash256, Slot)> {
         self.0
             .read()

@@ -42,6 +42,7 @@ impl Default for StoreConfig {
     fn default() -> Self {
         Self {
             // Safe default for tests, shouldn't ever be read by a CLI node.
+            // 用于测试，不能被CLI node读到
             slots_per_restore_point: MinimalEthSpec::slots_per_historical_root() as u64,
             slots_per_restore_point_set_explicitly: false,
             block_cache_size: DEFAULT_BLOCK_CACHE_SIZE,

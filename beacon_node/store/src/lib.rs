@@ -61,6 +61,7 @@ pub trait KeyValueStore<E: EthSpec>: Sync + Send + Sized + 'static {
     fn put_bytes_sync(&self, column: &str, key: &[u8], value: &[u8]) -> Result<(), Error>;
 
     /// Flush to disk.  See
+    /// 刷到磁盘中
     /// https://chromium.googlesource.com/external/leveldb/+/HEAD/doc/index.md#synchronous-writes
     /// for details.
     fn sync(&self) -> Result<(), Error>;
@@ -157,6 +158,7 @@ pub trait ItemStore<E: EthSpec>: KeyValueStore<E> + Sync + Send + Sized + 'stati
 
 /// Reified key-value storage operation.  Helps in modifying the storage atomically.
 /// See also https://github.com/sigp/lighthouse/issues/692
+/// 修改key-value存储的操作，帮助原子性地修改storage
 pub enum StoreOp<'a, E: EthSpec> {
     PutBlock(Hash256, Arc<SignedBeaconBlock<E>>),
     PutState(Hash256, &'a BeaconState<E>),
@@ -185,6 +187,7 @@ pub enum DBColumn {
     #[strum(serialize = "bss")]
     BeaconStateSummary,
     /// For the list of temporary states stored during block import,
+    /// 对于一系列在block import期间存储的temporary states，之后通过删除它们的state，从这一列，来形成non-temporary
     /// and then made non-temporary by the deletion of their state root from this column.
     #[strum(serialize = "bst")]
     BeaconStateTemporary,

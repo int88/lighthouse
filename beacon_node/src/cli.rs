@@ -494,6 +494,7 @@ pub fn cli_app<'a, 'b>() -> App<'a, 'b> {
             Arg::with_name("block-cache-size")
                 .long("block-cache-size")
                 .value_name("SIZE")
+                // 指定多少blocks应该缓存在内存中
                 .help("Specifies how many blocks the database should cache in memory [default: 5]")
                 .takes_value(true)
         )

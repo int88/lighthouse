@@ -32,8 +32,10 @@ pub enum Error {
         oldest_block_slot: Slot,
     },
     /// State reconstruction failed because it didn't reach the upper limit slot.
+    /// State reconstruction失败，因为它没有达到upper limit slot
     ///
     /// This should never happen (it's a logic error).
+    /// 这永远不该发生
     StateReconstructionDidNotComplete,
     StateReconstructionRootMismatch {
         slot: Slot,

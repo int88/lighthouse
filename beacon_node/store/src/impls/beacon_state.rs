@@ -9,6 +9,7 @@ pub fn store_full_state<E: EthSpec>(
     state: &BeaconState<E>,
     ops: &mut Vec<KeyValueStoreOp>,
 ) -> Result<(), Error> {
+    // 把state序列化
     let bytes = {
         let _overhead_timer = metrics::start_timer(&metrics::BEACON_STATE_WRITE_OVERHEAD_TIMES);
         StorageContainer::new(state).as_ssz_bytes()

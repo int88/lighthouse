@@ -1382,6 +1382,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Build all caches (except the tree hash cache), if they need to be built.
+    /// 构建所有的caches（除了tree hash cache），如果他们需要被构建
     pub fn build_all_caches(&mut self, spec: &ChainSpec) -> Result<(), Error> {
         self.build_all_committee_caches(spec)?;
         self.update_pubkey_cache()?;

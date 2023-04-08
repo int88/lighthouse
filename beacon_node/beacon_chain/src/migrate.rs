@@ -27,11 +27,13 @@ const COMPACTION_FINALITY_DISTANCE: u64 = 1024;
 
 /// The background migrator runs a thread to perform pruning and migrate state from the hot
 /// to the cold database.
+/// background migrator运行一个线程，用来执行清理并且迁移state，从hot db到cold db
 pub struct BackgroundMigrator<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> {
     db: Arc<HotColdDB<E, Hot, Cold>>,
     #[allow(clippy::type_complexity)]
     tx_thread: Option<Mutex<(mpsc::Sender<Notification>, thread::JoinHandle<()>)>>,
     /// Genesis block root, for persisting the `PersistedBeaconChain`.
+    /// Genesis block root，用于持久化`PersistedBeaconChain`
     genesis_block_root: Hash256,
     log: Logger,
 }
@@ -97,6 +99,7 @@ pub struct FinalizationNotification {
 
 impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Hot, Cold> {
     /// Create a new `BackgroundMigrator` and spawn its thread if necessary.
+    /// 创建一个新的`BackgroundMigrator`并且生成它的线程，如果需要的话
     pub fn new(
         db: Arc<HotColdDB<E, Hot, Cold>>,
         config: MigratorConfig,
@@ -199,15 +202,18 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
     }
 
     /// Perform the actual work of `process_finalization`.
+    /// 执行`process_finalization`的真正工作
     fn run_migration(
         db: Arc<HotColdDB<E, Hot, Cold>>,
         notif: FinalizationNotification,
         log: &Logger,
     ) {
+        // 开始数据库的整合
         debug!(log, "Database consolidation started");
 
         let finalized_state_root = notif.finalized_state_root;
 
+        // 获取finalized state
         let finalized_state = match db.get_state(&finalized_state_root.into(), None) {
             Ok(Some(state)) => state,
             other => {
@@ -221,6 +227,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
             }
         };
 
+        // 移除被抛弃的forks
         let old_finalized_checkpoint = match Self::prune_abandoned_forks(
             db.clone(),
             notif.head_tracker,
@@ -247,6 +254,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
             }) => {
                 warn!(
                     log,
+                    // 忽略失序的finalization request
                     "Ignoring out of order finalization request";
                     "old_finalized_epoch" => old_finalized_checkpoint.epoch,
                     "new_finalized_epoch" => new_finalized_checkpoint.epoch,
@@ -260,11 +268,13 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
             }
         };
 
+        // 迁移database
         match migrate_database(db.clone(), finalized_state_root.into(), &finalized_state) {
             Ok(()) => {}
             Err(Error::HotColdDBError(HotColdDBError::FreezeSlotUnaligned(slot))) => {
                 debug!(
                     log,
+                    // finalized block没有对齐
                     "Database migration postponed, unaligned finalized block";
                     "slot" => slot.as_u64()
                 );
@@ -280,6 +290,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
         };
 
         // Finally, compact the database so that new free space is properly reclaimed.
+        // 最后，压缩db，因此新的free space会被恰当地回收
         if let Err(e) = Self::run_compaction(
             db,
             old_finalized_checkpoint.epoch,
@@ -293,8 +304,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
     }
 
     /// Spawn a new child thread to run the migration process.
+    /// 生成一个新的child thread来运行迁移进程
     ///
     /// Return a channel handle for sending requests to the thread.
+    /// 返回一个channel handle用于发送请求到thread
     fn spawn_thread(
         db: Arc<HotColdDB<E, Hot, Cold>>,
         log: Logger,
@@ -304,6 +317,8 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
             while let Ok(notif) = rx.recv() {
                 // Read the rest of the messages in the channel, preferring any reconstruction
                 // notification, or the finalization notification with the greatest finalized epoch.
+                // 从channel读取剩余的messages，更倾向任何的reconstruction notification
+                // 或者有着最大的finalized epoch的finalization notification
                 let notif =
                     rx.try_iter()
                         .fold(notif, |best, other: Notification| match (&best, &other) {
@@ -334,6 +349,8 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
     /// Traverses live heads and prunes blocks and states of chains that we know can't be built
     /// upon because finalization would prohibit it. This is an optimisation intended to save disk
     /// space.
+    /// 遍历live heads并且清理chains的blocks以及states，我们知道不能再基于它们构建，因为finalization会禁止它
+    /// 这是一个优化，为了节省磁盘空间
     #[allow(clippy::too_many_arguments)]
     fn prune_abandoned_forks(
         store: Arc<HotColdDB<E, Hot, Cold>>,
@@ -362,6 +379,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
 
         // The finalized state must be for the epoch boundary slot, not the slot of the finalized
         // block.
+        // finalized state必须是epoch boundary slot，而不是finalized block
         if new_finalized_state.slot() != new_finalized_slot {
             return Err(PruningError::IncorrectFinalizedState {
                 state_slot: new_finalized_state.slot(),
@@ -371,8 +389,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
         }
 
         // The new finalized state must be newer than the previous finalized state.
+        // 新的finalized state必须比之前的finalized state更新
         // I think this can happen sometimes currently due to `fork_choice` running in parallel
         // with itself and sending us notifications out of order.
+        // 我们认为这可以发生，因为`fork_chocie`并行运行，并且发送给我们失序的notification
         if old_finalized_slot > new_finalized_slot {
             return Ok(PruningOutcome::OutOfOrderFinalization {
                 old_finalized_checkpoint,
@@ -382,12 +402,15 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
 
         debug!(
             log,
+            // 开始database pruning
             "Starting database pruning";
             "old_finalized_epoch" => old_finalized_checkpoint.epoch,
             "new_finalized_epoch" => new_finalized_checkpoint.epoch,
         );
         // For each slot between the new finalized checkpoint and the old finalized checkpoint,
         // collect the beacon block root and state root of the canonical chain.
+        // 对于新的finalized checkpoint和old finalized checkpoint的每个slot，收集beacon block root
+        // 以及state root，对于canonical chain
         let newly_finalized_chain: HashMap<Slot, (SignedBeaconBlockHash, BeaconStateHash)> =
             std::iter::once(Ok((
                 new_finalized_slot,
@@ -406,6 +429,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
 
         // We don't know which blocks are shared among abandoned chains, so we buffer and delete
         // everything in one fell swoop.
+        // 我们不知道哪些blocks在abandoned chains之间共享，因此我们缓存以及删除所有，在一个fell swoop
         let mut abandoned_blocks: HashSet<SignedBeaconBlockHash> = HashSet::new();
         let mut abandoned_states: HashSet<(Slot, BeaconStateHash)> = HashSet::new();
         let mut abandoned_heads: HashSet<Hash256> = HashSet::new();
@@ -424,6 +448,8 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
             // so delete it from the head tracker but leave it and its states in the database
             // This is suboptimal as it wastes disk space, but it's difficult to fix. A re-sync
             // can be used to reclaim the space.
+            // 加载head block，从head tracker删除，但是留下他以及它的states在db中，这是次优化，因为它浪费了
+            // 磁盘空间，但是这很难fix，一个resync可以用于回收空间
             let head_state_root = match store.get_blinded_block(&head_hash) {
                 Ok(Some(block)) => block.state_root(),
                 Ok(None) => {
@@ -446,6 +472,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
             let mut potentially_abandoned_blocks = vec![];
 
             // Iterate backwards from this head, staging blocks and states for deletion.
+            // 从head反向迭代，blocks和states用于删除
             let iter = std::iter::once(Ok((head_hash, head_state_root, head_slot)))
                 .chain(RootsIterator::from_block(&store, head_hash)?);
 
@@ -458,8 +485,11 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
                     // If there's no information about a slot on the finalized chain, then
                     // it should be because it's ahead of the new finalized slot. Stage
                     // the fork's block and state for possible deletion.
+                    // 如果没有信息关于一个slot，在finalized chain，之后，则它应该在新的finalized slot之前
+                    // 提交fork的block以及state，用于可能的删除
                     None => {
                         if slot > new_finalized_slot {
+                            // 加入到可能的abandoned blocks
                             potentially_abandoned_blocks.push((
                                 slot,
                                 Some(block_root),
@@ -483,6 +513,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
                     }
                     Some((finalized_block_root, finalized_state_root)) => {
                         // This fork descends from a newly finalized block, we can stop.
+                        // 这个fork继承自新的finalized block，我们可以停止了
                         if block_root == *finalized_block_root {
                             // Sanity check: if the slot and block root match, then the
                             // state roots should match too.
@@ -540,6 +571,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
                         .iter()
                         .filter_map(|(_, maybe_block_hash, _)| *maybe_block_hash),
                 );
+                // 扩展states
                 abandoned_states.extend(potentially_abandoned_blocks.iter().filter_map(
                     |(slot, _, maybe_state_hash)| maybe_state_hash.map(|sr| (*slot, sr)),
                 ));
@@ -577,6 +609,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
             .chain(
                 abandoned_states
                     .into_iter()
+                    // 删除states
                     .map(|(slot, state_hash)| StoreOp::DeleteState(state_hash.into(), Some(slot))),
             )
             .collect();
@@ -585,6 +618,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
 
         // Persist the head in case the process is killed or crashes here. This prevents
         // the head tracker reverting after our mutation above.
+        // 持久化head，万一进程被kill或者crash，这防止head tracker revertign，在我们上面的修改之后
         let persisted_head = PersistedBeaconChain {
             _canonical_head_block_root: DUMMY_CANONICAL_HEAD_BLOCK_ROOT,
             genesis_block_root,
@@ -594,6 +628,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
         kv_batch.push(persisted_head.as_kv_store_op(BEACON_CHAIN_DB_KEY));
 
         // Persist the new finalized checkpoint as the pruning checkpoint.
+        // 持久化新的finalized checkpoint，作为pruning checkpoint
         kv_batch.push(store.pruning_checkpoint_store_op(new_finalized_checkpoint));
 
         store.hot_db.do_atomically(kv_batch)?;
@@ -606,6 +641,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
 
     /// Compact the database if it has been more than `COMPACTION_PERIOD_SECONDS` since it
     /// was last compacted.
+    /// 压缩db，如果距离上次压缩已经超过了`COMPACTION_PERIOD_SECONDS`
     pub fn run_compaction(
         db: Arc<HotColdDB<E, Hot, Cold>>,
         old_finalized_epoch: Epoch,
