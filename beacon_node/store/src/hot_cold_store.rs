@@ -579,6 +579,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 self.load_hot_state(state_root, StateRootStrategy::Accurate)
             }
         } else {
+            // 如果没有指定slot
             // 首先加载hot state
             match self.load_hot_state(state_root, StateRootStrategy::Accurate)? {
                 Some(state) => Ok(Some(state)),
@@ -1040,6 +1041,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
 
         if slot <= lower_limit || slot >= upper_limit {
             if slot % self.config.slots_per_restore_point == 0 {
+                // 在restore point边界上
                 let restore_point_idx = slot.as_u64() / self.config.slots_per_restore_point;
                 // 通过restore_point_idx加载restore point
                 self.load_restore_point_by_index(restore_point_idx)
@@ -1064,6 +1066,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             PartialBeaconState::from_ssz_bytes(&partial_state_bytes, &self.spec)?;
 
         // Fill in the fields of the partial state.
+        // 加载部分状态的字段
         partial_state.load_block_roots(&self.cold_db, &self.spec)?;
         partial_state.load_state_roots(&self.cold_db, &self.spec)?;
         partial_state.load_historical_roots(&self.cold_db, &self.spec)?;
@@ -1079,6 +1082,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         &self,
         restore_point_index: u64,
     ) -> Result<BeaconState<E>, Error> {
+        // 加载restore point的state
         let state_root = self.load_restore_point_hash(restore_point_index)?;
         self.load_restore_point(&state_root)
     }
@@ -1087,10 +1091,12 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     /// 加载restore points之间的frozen state
     fn load_cold_intermediate_state(&self, slot: Slot) -> Result<BeaconState<E>, Error> {
         // 1. Load the restore points either side of the intermediate state.
+        // 1. 加载intermediate state两段的restore points
         let low_restore_point_idx = slot.as_u64() / self.config.slots_per_restore_point;
         let high_restore_point_idx = low_restore_point_idx + 1;
 
         // Acquire the read lock, so that the split can't change while this is happening.
+        // 获取read lock，这样split就不能改变
         let split = self.split.read_recursive();
 
         let low_restore_point = self.load_restore_point_by_index(low_restore_point_idx)?;
@@ -1107,7 +1113,9 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         // 3. Replay the blocks on top of the low restore point.
         // 3. 在low restore point之上重放blocks
         // Use a forwards state root iterator to avoid doing any tree hashing.
+        // 使用forwards state root的迭代器来避免任何的tree hashing
         // The state root of the high restore point should never be used, so is safely set to 0.
+        // high restore point的state root不应该被使用，因此可以安全地置为零
         let state_root_iter = self.forwards_state_roots_iterator_until(
             low_restore_point.slot(),
             slot,
@@ -1115,6 +1123,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             &self.spec,
         )?;
 
+        // 重放blocks
         self.replay_blocks(
             low_restore_point,
             blocks,
@@ -1132,6 +1141,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         split: &Split,
     ) -> Result<BeaconState<E>, Error> {
         if restore_point_idx * self.config.slots_per_restore_point >= split.slot.as_u64() {
+            // 超过了split，则直接从get state加载split slot
             self.get_state(&split.state_root, Some(split.slot))?
                 .ok_or(HotColdDBError::MissingSplitState(
                     split.state_root,
@@ -1144,14 +1154,17 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Get a suitable block root for backtracking from `high_restore_point` to the state at `slot`.
+    /// 获取一个可用的block root，用于从`high_restore_point`回溯到`slot`
     ///
     /// Defaults to the block root for `slot`, which *should* be in range.
+    /// 默认block root对于`slot`，它不应该在range内
     fn get_high_restore_point_block_root(
         &self,
         high_restore_point: &BeaconState<E>,
         slot: Slot,
     ) -> Result<Hash256, HotColdDBError> {
         high_restore_point
+            // 获取block root
             .get_block_root(slot)
             .or_else(|_| high_restore_point.get_oldest_block_root())
             .map(|x| *x)
@@ -1227,6 +1240,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         }
 
         block_replayer
+            // 应用blocks
             .apply_blocks(blocks, Some(target_slot))
             .map(|block_replayer| {
                 if have_state_root_iterator && block_replayer.state_root_miss() {
@@ -1392,24 +1406,32 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Return the slot-window describing the available historic states.
+    /// 返回slot-window，用来描述可用的historical states
     ///
     /// Returns `(lower_limit, upper_limit)`.
     ///
     /// The lower limit is the maximum slot such that frozen states are available for all
     /// previous slots (<=).
+    /// low limit是最大的slot，frozen states可用，对于所有之前的slots（<=）
     ///
     /// The upper limit is the minimum slot such that frozen states are available for all
     /// subsequent slots (>=).
+    /// upper limit是最小的slot，frozen states可用，对于所有之后的states
     ///
     /// If `lower_limit >= upper_limit` then all states are available. This will be true
     /// if the database is completely filled in, as we'll return `(split_slot, 0)` in this
     /// instance.
+    /// 如果`lower_limit >= upper_limit`，那么所有的states可用，这会为true，当database被完全填充
+    /// 因为我们会返回`(split_slot, 0)`，针对这种情况
     pub fn get_historic_state_limits(&self) -> (Slot, Slot) {
         // If checkpoint sync is used then states in the hot DB will always be available, but may
         // become unavailable as finalisation advances due to the lack of a restore point in the
         // database. For this reason we take the minimum of the split slot and the
         // restore-point-aligned `state_upper_limit`, which should be set _ahead_ of the checkpoint
         // slot during initialisation.
+        // 如果使用了checkpoint sync，那么hot DB中的states总是可用的，但是会不可用，随着finalisation前进
+        // 因为db中缺少一个restore point，因为这个原因，我们拿最小的split slot以及restore-point对齐的
+        // `state_upper_limit`，它应该在checkpoint slot之前，在初始化过程中
         //
         // E.g. if we start from a checkpoint at slot 2048+1024=3072 with SPRP=2048, then states
         // with slots 3072-4095 will be available only while they are in the hot database, and this
@@ -1459,6 +1481,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load the state root of a restore point.
+    /// 加载一个restore point的state root
     fn load_restore_point_hash(&self, restore_point_index: u64) -> Result<Hash256, Error> {
         let key = Self::restore_point_key(restore_point_index);
         self.cold_db
@@ -1468,6 +1491,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Store the state root of a restore point.
+    /// 存储一个restore point的state root
     fn store_restore_point_hash(
         &self,
         restore_point_index: u64,

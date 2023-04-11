@@ -134,10 +134,13 @@ where
     }
 
     /// Supply a state root iterator to accelerate slot processing.
+    /// 提供一个state root iterator用来加速slot的处理
     ///
     /// If possible the state root iterator should return a state root for every slot from
     /// `self.state.slot` to the `target_slot` supplied to `apply_blocks` (inclusive of both
     /// endpoints).
+    /// 如果可能的话，state root iterator应该返回一个state root，对于每个slot，从`self.state.slot`
+    /// 到`target_slot`，提供给`apply_blocks`（包含两个端点）
     pub fn state_root_iter(mut self, iter: StateRootIter) -> Self {
         self.state_root_iter = Some(iter);
         self

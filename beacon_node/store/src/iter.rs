@@ -247,6 +247,7 @@ impl<'a, T: EthSpec, Hot: ItemStore<T>, Cold: ItemStore<T>> Iterator
 }
 
 /// Block iterator that uses the `parent_root` of each block to backtrack.
+/// Block iterator，使用每个block的`parent_root`来回溯
 pub struct ParentRootBlockIterator<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> {
     store: &'a HotColdDB<E, Hot, Cold>,
     next_block_root: Hash256,
@@ -267,6 +268,7 @@ impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>
     }
 
     /// Block iterator that is tolerant of blocks that have the wrong fork for their slot.
+    /// Block iterator，能容忍blocks，在它们的slot有着错误的fork
     pub fn fork_tolerant(store: &'a HotColdDB<E, Hot, Cold>, start_block_root: Hash256) -> Self {
         Self {
             store,
