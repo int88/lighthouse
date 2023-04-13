@@ -1,4 +1,5 @@
 ///! This implements a time-based LRU cache for fast checking of duplicates
+/// 这实现了一个基于时间的LRU cache，用于对重复的快速查找
 use fnv::FnvHashSet;
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};

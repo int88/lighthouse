@@ -1,8 +1,10 @@
 //! The `BeaconProposer` cache stores the proposer indices for some epoch.
+//! `BeaconProposer` cache为一些epoch缓存proposer indices
 //!
 //! This cache is keyed by `(epoch, block_root)` where `block_root` is the block root at
 //! `end_slot(epoch - 1)`. We make the assertion that the proposer shuffling is identical for all
 //! blocks in `epoch` which share the common ancestor of `block_root`.
+//! cache用`(epoch, block_root)`作为索引 ，其中`block_root`是在`end_slot(epoch - 1)`的block root
 //!
 //! The cache is a fairly unintelligent LRU cache that is not pruned after finality. This makes it
 //! very simple to reason about, but it might store values that are useless due to finalization. The
@@ -49,6 +51,7 @@ pub struct EpochBlockProposers {
 }
 
 /// A cache to store the proposers for some epoch.
+/// 一个缓存用来存储proposers，对于一些epoch
 ///
 /// See the module-level documentation for more information.
 pub struct BeaconProposerCache {
@@ -66,6 +69,8 @@ impl Default for BeaconProposerCache {
 impl BeaconProposerCache {
     /// If it is cached, returns the proposer for the block at `slot` where the block has the
     /// ancestor block root of `shuffling_decision_block` at `end_slot(slot.epoch() - 1)`.
+    /// 如果被缓存了，返回在`slot`的block的proposer，其中block有ancestor root，在`shuffling_decision_block`
+    /// 在`end_slot(slot.epoch() - 1)`
     pub fn get_slot<T: EthSpec>(
         &mut self,
         shuffling_decision_block: Hash256,
@@ -73,6 +78,7 @@ impl BeaconProposerCache {
     ) -> Option<Proposer> {
         let epoch = slot.epoch(T::slots_per_epoch());
         let key = (epoch, shuffling_decision_block);
+        // 从cache中查找
         if let Some(cache) = self.cache.get(&key) {
             // This `if` statement is likely unnecessary, but it feels like good practice.
             if epoch == cache.epoch {
