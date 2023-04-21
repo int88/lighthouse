@@ -81,8 +81,10 @@ impl<E: EthSpec> LevelDB<E> {
     }
 }
 
+// LevelDB实现了KeyValueStore
 impl<E: EthSpec> KeyValueStore<E> for LevelDB<E> {
     /// Store some `value` in `column`, indexed with `key`.
+    /// 存储一些`value`到`column`，按照`key`索引
     fn put_bytes(&self, col: &str, key: &[u8], val: &[u8]) -> Result<(), Error> {
         self.put_bytes_with_options(col, key, val, self.write_options())
     }
@@ -96,6 +98,7 @@ impl<E: EthSpec> KeyValueStore<E> for LevelDB<E> {
     }
 
     /// Retrieve some bytes in `column` with `key`.
+    /// 用`key`从`colume获取一些字节`
     fn get_bytes(&self, col: &str, key: &[u8]) -> Result<Option<Vec<u8>>, Error> {
         let column_key = get_key_for_col(col, key);
 

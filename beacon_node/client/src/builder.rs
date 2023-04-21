@@ -57,6 +57,8 @@ pub const ETH1_GENESIS_UPDATE_INTERVAL_MILLIS: u64 = 7_000;
 /// If type inference errors are raised, ensure all necessary components have been initialized. For
 /// example, the compiler will be unable to infer `T::Store` unless `self.disk_store(..)` or
 /// `self.memory_store(..)` has been called.
+/// 如果产生了type inference error，确保所有必要的组件都已经初始化了，例如，compiler会不能推测`T::Store`，除非`self.dis_store()`
+/// 或者`self.memory_store(..)`被调用
 pub struct ClientBuilder<T: BeaconChainTypes> {
     slot_clock: Option<T::SlotClock>,
     #[allow(clippy::type_complexity)]
@@ -909,6 +911,7 @@ where
     TEthSpec: EthSpec + 'static,
 {
     /// Specifies that the `Client` should use a `HotColdDB` database.
+    /// 指定`Client`应该使用一个`HotColdDB`数据库
     pub fn disk_store(
         mut self,
         hot_path: &Path,

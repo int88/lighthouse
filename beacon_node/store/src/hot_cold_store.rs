@@ -157,6 +157,8 @@ impl<E: EthSpec> HotColdDB<E, LevelDB<E>, LevelDB<E>> {
     ///
     /// The `migrate_schema` function is passed in so that the parent `BeaconChain` can provide
     /// context and access `BeaconChain`-level code without creating a circular dependency.
+    /// `migration_schema`函数被传递，这也parent `BeaconChain`可以提供上下文以及访问`BeaconChain`级别的代码
+    /// 而不用创建循环依赖
     pub fn open(
         hot_path: &Path,
         cold_path: &Path,
@@ -221,7 +223,9 @@ impl<E: EthSpec> HotColdDB<E, LevelDB<E>, LevelDB<E>> {
         }
 
         // Ensure that the schema version of the on-disk database matches the software.
+        // 确保磁盘数据库中的schema version和软件匹配
         // If the version is mismatched, an automatic migration will be attempted.
+        // 如果version不匹配，则会尝试一个自动的migration
         let db = Arc::new(db);
         if let Some(schema_version) = db.load_schema_version()? {
             debug!(
@@ -236,6 +240,7 @@ impl<E: EthSpec> HotColdDB<E, LevelDB<E>, LevelDB<E>> {
         }
 
         // Ensure that any on-disk config is compatible with the supplied config.
+        // 确保任何磁盘中的配置和提供的配置匹配
         if let Some(disk_config) = db.load_config()? {
             db.config.check_compatibility(&disk_config)?;
         }
@@ -257,6 +262,7 @@ impl<E: EthSpec> HotColdDB<E, LevelDB<E>, LevelDB<E>> {
     }
 
     /// Return an iterator over the state roots of all temporary states.
+    /// 返回一个iterator，遍历temporary states中的所有state roots
     pub fn iter_temporary_state_roots(&self) -> impl Iterator<Item = Result<Hash256, Error>> + '_ {
         let column = DBColumn::BeaconStateTemporary;
         let start_key =
@@ -423,6 +429,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Convert a blinded block into a full block by loading its execution payload if necessary.
+    /// 转换一个blinded block为一个full block，通过加载它的execution payload，如果需要的话
     pub fn make_full_block(
         &self,
         block_root: &Hash256,
@@ -450,6 +457,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Fetch a block from the store, ignoring which fork variant it *should* be for.
+    /// 从store中获取一个block，不管它应该是哪个fork variant
     pub fn get_block_any_variant<Payload: AbstractExecPayload<E>>(
         &self,
         block_root: &Hash256,
@@ -507,6 +515,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Determine whether a block exists in the database.
+    /// 确定block是否在数据库中存在
     pub fn block_exists(&self, block_root: &Hash256) -> Result<bool, Error> {
         self.hot_db
             .key_exists(DBColumn::BeaconBlock.into(), block_root.as_bytes())
@@ -1514,6 +1523,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         Ok(self
             .cold_db
             .get(state_root)?
+            // 获取到的类型为ColdStateSummary
             .map(|s: ColdStateSummary| s.slot))
     }
 
@@ -1528,9 +1538,12 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load the temporary flag for a state root, if one exists.
+    /// 对于一个state root加载临时的flag，如果它存在的话
     ///
     /// Returns `Some` if the state is temporary, or `None` if the state is permanent or does not
     /// exist -- you should call `load_hot_state_summary` to find out which.
+    /// 返回`Some`如果state是临时的，或者`None`，如果state是永久的或者不存在 --- 你需要调用`load_hot_state_summary`
+    /// 来发现是哪个
     pub fn load_state_temporary_flag(
         &self,
         state_root: &Hash256,
@@ -1569,12 +1582,14 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Run a compaction pass to free up space used by deleted states.
+    /// 运行一个compaction pass来释放删除的states使用的空间
     pub fn compact(&self) -> Result<(), Error> {
         self.hot_db.compact()?;
         Ok(())
     }
 
     /// Return `true` if compaction on finalization/pruning is enabled.
+    /// 返回`true`，如果在finalization/pruning的压缩已经使能了
     pub fn compact_on_prune(&self) -> bool {
         self.config.compact_on_prune
     }

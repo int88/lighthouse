@@ -112,6 +112,7 @@ pub enum KeyValueStoreOp {
 
 pub trait ItemStore<E: EthSpec>: KeyValueStore<E> + Sync + Send + Sized + 'static {
     /// Store an item in `Self`.
+    /// 存储一个item到`Self`中
     fn put<I: StoreItem>(&self, key: &Hash256, item: &I) -> Result<(), Error> {
         let column = I::db_column().into();
         let key = key.as_bytes();
@@ -129,6 +130,7 @@ pub trait ItemStore<E: EthSpec>: KeyValueStore<E> + Sync + Send + Sized + 'stati
     }
 
     /// Retrieve an item from `Self`.
+    /// 从`Self`中获取一个item
     fn get<I: StoreItem>(&self, key: &Hash256) -> Result<Option<I>, Error> {
         let column = I::db_column().into();
         let key = key.as_bytes();
@@ -140,6 +142,7 @@ pub trait ItemStore<E: EthSpec>: KeyValueStore<E> + Sync + Send + Sized + 'stati
     }
 
     /// Returns `true` if the given key represents an item in `Self`.
+    /// 返回`true，如果给定的key代表`Self`中的一个item
     fn exists<I: StoreItem>(&self, key: &Hash256) -> Result<bool, Error> {
         let column = I::db_column().into();
         let key = key.as_bytes();
@@ -148,6 +151,7 @@ pub trait ItemStore<E: EthSpec>: KeyValueStore<E> + Sync + Send + Sized + 'stati
     }
 
     /// Remove an item from `Self`.
+    /// 从`Self`中移除一个item
     fn delete<I: StoreItem>(&self, key: &Hash256) -> Result<(), Error> {
         let column = I::db_column().into();
         let key = key.as_bytes();
