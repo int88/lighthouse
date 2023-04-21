@@ -261,7 +261,9 @@ impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>
     pub fn new(store: &'a HotColdDB<E, Hot, Cold>, start_block_root: Hash256) -> Self {
         Self {
             store,
+            // 开始的block的root
             next_block_root: start_block_root,
+            // 不解码
             decode_any_variant: false,
             _phantom: PhantomData,
         }
@@ -284,6 +286,7 @@ impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>
     ) -> Result<Option<(Hash256, SignedBeaconBlock<E, BlindedPayload<E>>)>, Error> {
         // Stop once we reach the zero parent, otherwise we'll keep returning the genesis
         // block forever.
+        // 停止，一旦我们到达了zero parent，否则我们会继续，直到genesis block
         if self.next_block_root.is_zero() {
             Ok(None)
         } else {
@@ -294,15 +297,18 @@ impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>
                 self.store.get_blinded_block(&block_root)
             }?
             .ok_or(Error::BlockNotFound(block_root))?;
+            // 将parent block作为next_block_root
             self.next_block_root = block.message().parent_root();
             Ok(Some((block_root, block)))
         }
     }
 }
 
+// 实现了Iterator
 impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> Iterator
     for ParentRootBlockIterator<'a, E, Hot, Cold>
 {
+    // 定义Item
     type Item = Result<(Hash256, SignedBeaconBlock<E, BlindedPayload<E>>), Error>;
 
     fn next(&mut self) -> Option<Self::Item> {

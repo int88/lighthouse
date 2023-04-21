@@ -4,8 +4,10 @@ use slog::error;
 use types::{ChainSpec, EthSpec, Slot};
 
 /// Iterator over the values of a `BeaconState` vector field (like `block_roots`).
+/// 遍历一个`BeaconState`的vector字段的iterator（例如`block_roots`）
 ///
 /// Uses the freezer DB's separate table to load the values.
+/// 使用freezer DB的separate table来加载值
 pub struct ChunkedVectorIter<'a, F, E, Hot, Cold>
 where
     F: Field<E>,

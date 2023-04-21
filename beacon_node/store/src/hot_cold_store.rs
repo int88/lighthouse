@@ -713,6 +713,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         get_state: impl FnOnce() -> (BeaconState<E>, Hash256),
         spec: &ChainSpec,
     ) -> Result<HybridForwardsStateRootsIterator<E, Hot, Cold>, Error> {
+        // 构建一个state root iterator
         HybridForwardsStateRootsIterator::new(self, start_slot, Some(end_slot), get_state, spec)
     }
 
@@ -1191,6 +1192,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         start_slot: Slot,
         end_slot: Slot,
         end_block_hash: Hash256,
+        // 返回一系列SignedBeaconBlock
     ) -> Result<Vec<SignedBeaconBlock<E, BlindedPayload<E>>>, Error> {
         let mut blocks = ParentRootBlockIterator::new(self, end_block_hash)
             .map(|result| result.map(|(_, block)| block))
@@ -1212,7 +1214,11 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             // oldest known block -- we can't know that we have all the required blocks until we
             // load a block with slot less than the start slot, which is impossible if there are
             // no blocks with slot less than the start slot.
+            // 返回`true`在遇到一个`Err`，这样`collect`就会失败，除非error是`BlockNotFound`并且有的blocks是有意在DB中缺失的
+            // 这个复杂度是不可避免的必要的，为了避免加载oldest known block的parent，我们没法知道我们有所有需要的blocks，直到
+            // 我们加载一个block，它的slot小于start slot，这是不可能的，如果没有blocks有着比start slot更小的slot
             .take_while(|result| match result {
+                // block slot大于等于start_slot的时候持续运行
                 Ok(block) => block.slot() >= start_slot,
                 Err(Error::BlockNotFound(_)) => {
                     self.get_oldest_block_slot() == self.spec.genesis_slot

@@ -12,8 +12,10 @@ use types::superstruct;
 use types::*;
 
 /// Lightweight variant of the `BeaconState` that is stored in the database.
+/// 轻量级版本的`BeaconState`，可以存储在数据库中
 ///
 /// Utilises lazy-loading from separate storage for its vector fields.
+/// 使用来自分离存储的lazy-loading，对于它的vector字段
 #[superstruct(
     variants(Base, Altair, Merge, Capella),
     variant_attributes(derive(Debug, PartialEq, Clone, Encode, Decode))
@@ -166,6 +168,7 @@ macro_rules! impl_from_state_forgetful {
 
 impl<T: EthSpec> PartialBeaconState<T> {
     /// Convert a `BeaconState` to a `PartialBeaconState`, while dropping the optional fields.
+    /// 转换一个`BeaconState`到`PartialBeaconState`，同时丢弃可选的字段
     pub fn from_state_forgetful(outer: &BeaconState<T>) -> Self {
         match outer {
             BeaconState::Base(s) => impl_from_state_forgetful!(

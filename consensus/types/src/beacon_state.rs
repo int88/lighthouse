@@ -209,6 +209,7 @@ where
     T: EthSpec,
 {
     // Versioning
+    // 版本信息
     #[superstruct(getter(copy))]
     #[serde(with = "eth2_serde_utils::quoted_u64")]
     pub genesis_time: u64,
@@ -221,6 +222,7 @@ where
     pub fork: Fork,
 
     // History
+    // 历史信息
     pub latest_block_header: BeaconBlockHeader,
     #[compare_fields(as_slice)]
     pub block_roots: FixedVector<Hash256, T::SlotsPerHistoricalRoot>,
@@ -230,6 +232,7 @@ where
     pub historical_roots: VariableList<Hash256, T::HistoricalRootsLimit>,
 
     // Ethereum 1.0 chain data
+    // Ethereum 1.0相关的链数据
     pub eth1_data: Eth1Data,
     pub eth1_data_votes: VariableList<Eth1Data, T::SlotsPerEth1VotingPeriod>,
     #[superstruct(getter(copy))]
@@ -237,6 +240,7 @@ where
     pub eth1_deposit_index: u64,
 
     // Registry
+    // Registry相关的数据
     #[compare_fields(as_slice)]
     pub validators: VariableList<Validator, T::ValidatorRegistryLimit>,
     #[compare_fields(as_slice)]

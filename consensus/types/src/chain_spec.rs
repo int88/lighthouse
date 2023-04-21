@@ -33,6 +33,7 @@ pub enum Domain {
 pub struct ChainSpec {
     /*
      * Config name
+     * 配置名
      */
     pub config_name: Option<String>,
 
@@ -188,6 +189,7 @@ pub struct ChainSpec {
 
 impl ChainSpec {
     /// Construct a `ChainSpec` from a standard config.
+    /// 从标准配置构建一个`ChainSpec`
     pub fn from_config<T: EthSpec>(config: &Config) -> Option<Self> {
         let spec = T::default_spec();
         config.apply_to_chain_spec::<T>(&spec)

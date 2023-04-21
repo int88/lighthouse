@@ -254,6 +254,7 @@ macro_rules! params_from_eth_spec {
 #[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize, arbitrary::Arbitrary)]
 pub struct MainnetEthSpec;
 
+// MainnetEthSpec实现了EthSpec
 impl EthSpec for MainnetEthSpec {
     type JustificationBitsLength = U4;
     type SubnetBitfieldLength = U64;
@@ -298,6 +299,7 @@ impl EthSpec for MainnetEthSpec {
 #[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize, arbitrary::Arbitrary)]
 pub struct MinimalEthSpec;
 
+// MinimalEthSpec实现了EthSpec
 impl EthSpec for MinimalEthSpec {
     type SlotsPerEpoch = U8;
     type EpochsPerEth1VotingPeriod = U4;

@@ -18,6 +18,7 @@ pub struct MemoryStore<E: EthSpec> {
 
 impl<E: EthSpec> MemoryStore<E> {
     /// Create a new, empty database.
+    /// 创建一个新的，空的数据库
     pub fn open() -> Self {
         Self {
             db: RwLock::new(HashMap::new()),

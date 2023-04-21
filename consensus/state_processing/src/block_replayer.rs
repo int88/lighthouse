@@ -120,9 +120,11 @@ where
     }
 
     /// Disable signature verification during replay.
+    /// 在replay期间禁止signature verification
     ///
     /// If you are truly _replaying_ blocks then you will almost certainly want to disable
     /// signature checks for performance.
+    /// 如果你真的在replaying blocks，那么你几乎确定想要关闭signature checks，为了性能
     pub fn no_signature_verification(self) -> Self {
         self.block_signature_strategy(BlockSignatureStrategy::NoVerification)
     }
