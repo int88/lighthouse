@@ -5,6 +5,7 @@ use ssz_derive::{Decode, Encode};
 use types::{EthSpec, MinimalEthSpec};
 
 pub const PREV_DEFAULT_SLOTS_PER_RESTORE_POINT: u64 = 2048;
+// restore point之间的slots数目为8192个
 pub const DEFAULT_SLOTS_PER_RESTORE_POINT: u64 = 8192;
 pub const DEFAULT_BLOCK_CACHE_SIZE: usize = 5;
 
@@ -15,15 +16,19 @@ pub struct StoreConfig {
     /// 存储在freezer database的restroe points之间的slots的数目
     pub slots_per_restore_point: u64,
     /// Flag indicating whether the `slots_per_restore_point` was set explicitly by the user.
+    /// flag表示是否由用户显式设置`slots_per_restore_point`
     pub slots_per_restore_point_set_explicitly: bool,
     /// Maximum number of blocks to store in the in-memory block cache.
     /// 存储在内存中的block cache的blocks的最大值
     pub block_cache_size: usize,
     /// Whether to compact the database on initialization.
+    /// 是否在初始化的时候对数据库进行压缩
     pub compact_on_init: bool,
     /// Whether to compact the database during database pruning.
+    /// 是否在database pruning的时候对db进行压缩
     pub compact_on_prune: bool,
     /// Whether to prune payloads on initialization and finalization.
+    /// 是否在初始化以及finalization的时候移除payloads
     pub prune_payloads: bool,
 }
 

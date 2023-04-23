@@ -132,6 +132,7 @@ impl<E: EthSpec> HotColdDB<E, MemoryStore<E>, MemoryStore<E>> {
     ) -> Result<HotColdDB<E, MemoryStore<E>, MemoryStore<E>>, Error> {
         Self::verify_slots_per_restore_point(config.slots_per_restore_point)?;
 
+        // 构建一个memory db
         let db = HotColdDB {
             split: RwLock::new(Split::default()),
             anchor_info: RwLock::new(None),

@@ -951,6 +951,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Safely obtains the index for latest block roots, given some `slot`.
+    /// 安全地获取最新的block roots的索引，给定一些`slot`
     ///
     /// Spec v0.12.1
     fn get_latest_block_roots_index(&self, slot: Slot) -> Result<usize, Error> {
@@ -969,6 +970,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Return the block root at a recent `slot`.
+    /// 返回block root，在一个最近的`slot`
     pub fn get_block_root(&self, slot: Slot) -> Result<&Hash256, BeaconStateError> {
         let i = self.get_latest_block_roots_index(slot)?;
         self.block_roots()
@@ -1071,17 +1073,21 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Safely obtains the index for latest state roots, given some `slot`.
+    /// 安全地获取最新的state roots的index，给定一些`slot`
     ///
     /// Spec v0.12.1
     fn get_latest_state_roots_index(&self, slot: Slot) -> Result<usize, Error> {
         if slot < self.slot() && self.slot() <= slot.safe_add(self.state_roots().len() as u64)? {
+            // 在state roots范围内
             Ok(slot.as_usize().safe_rem(self.state_roots().len())?)
         } else {
+            // 超过范围的slots
             Err(BeaconStateError::SlotOutOfBounds)
         }
     }
 
     /// Gets the state root for some slot.
+    /// 为一些slot获取state root
     pub fn get_state_root(&self, slot: Slot) -> Result<&Hash256, Error> {
         let i = self.get_latest_state_roots_index(slot)?;
         self.state_roots()
@@ -1102,6 +1108,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Sets the latest state root for slot.
+    /// 设置slot最新的state root
     pub fn set_state_root(&mut self, slot: Slot, state_root: Hash256) -> Result<(), Error> {
         let i = self.get_latest_state_roots_index(slot)?;
         *self

@@ -51,10 +51,12 @@ impl<E: EthSpec> Root<E> for StateRoots {
         end_state_root: Hash256,
     ) -> Result<SimpleForwardsIterator> {
         // Iterate backwards from the end state, stopping at the start slot.
+        // 从end state开始往后迭代，在start slot停止
         let values = process_results(
             std::iter::once(Ok((end_state_root, end_state.slot())))
                 .chain(StateRootsIterator::owned(store, end_state)),
             |iter| {
+                // 收集到slot大于等于start_slot
                 iter.take_while(|(_, slot)| *slot >= start_slot)
                     .collect::<Vec<_>>()
             },
@@ -185,18 +187,22 @@ impl<'a, E: EthSpec, F: Root<E>, Hot: ItemStore<E>, Cold: ItemStore<E>>
             // 一个`NoContinuationData`
             let continuation_data =
                 if end_slot.map_or(false, |end_slot| end_slot < latest_restore_point_slot) {
+                    // end slot不为空或者end_slot小于latest_restore_point_slot
                     None
                 } else {
-                    // 直接调用get_state()
+                    // end_slot不为空且end_slot大于等于latest_restore_point_slot，直接调用get_state()
                     Some(Box::new(get_state()))
                 };
+            // finalization之前，start_slot已经finalization
             PreFinalization {
                 iter,
                 continuation_data,
             }
         } else {
+            // start slot和end slot都在finalization之后
             PostFinalizationLazy {
                 continuation_data: Some(Box::new(get_state())),
+                // 从store中获取
                 store,
                 start_slot,
             }
@@ -218,6 +224,8 @@ impl<'a, E: EthSpec, F: Root<E>, Hot: ItemStore<E>, Cold: ItemStore<E>>
                     // Once the pre-finalization iterator is consumed, transition
                     // to a post-finalization iterator beginning from the last slot
                     // of the pre iterator.
+                    // 一旦pre-finalization iterator被消耗完毕，转换到post finalization
+                    // 从pre iterator的最后一个slot开始迭代
                     None => {
                         let continuation_data = continuation_data.take();
                         let store = iter.inner.store;
@@ -241,8 +249,10 @@ impl<'a, E: EthSpec, F: Root<E>, Hot: ItemStore<E>, Cold: ItemStore<E>>
                 let (end_state, end_root) =
                     *continuation_data.take().ok_or(Error::NoContinuationData)?;
                 *self = PostFinalization {
+                    // 转换为Post Finalization
                     iter: F::simple_forwards_iterator(store, *start_slot, end_state, end_root)?,
                 };
+                // 执行self，也就是PostFinalization的do_next()
                 self.do_next()
             }
             PostFinalization { iter } => iter.next().transpose(),

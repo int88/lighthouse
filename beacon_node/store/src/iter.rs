@@ -201,31 +201,38 @@ impl<'a, T: EthSpec, Hot: ItemStore<T>, Cold: ItemStore<T>> RootsIterator<'a, T,
     }
 
     fn do_next(&mut self) -> Result<Option<(Hash256, Hash256, Slot)>, Error> {
+        // 如果slot为0或者self.slot大于beacon的slot，则直接返回
         if self.slot == 0 || self.slot > self.beacon_state.slot() {
             return Ok(None);
         }
 
+        // 每迭代一次，slot减一
         self.slot -= 1;
 
         match (
+            // 根据slot获取block和state
             self.beacon_state.get_block_root(self.slot),
             self.beacon_state.get_state_root(self.slot),
         ) {
             (Ok(block_root), Ok(state_root)) => Ok(Some((*block_root, *state_root, self.slot))),
             (Err(BeaconStateError::SlotOutOfBounds), Err(BeaconStateError::SlotOutOfBounds)) => {
                 // Read a `BeaconState` from the store that has access to prior historical roots.
+                // 从store中读取一个`BeaconState`，已经访问了historical roots之前的东西
                 if let Some(beacon_state) =
                     next_historical_root_backtrack_state(self.store, &self.beacon_state)
                         .handle_unavailable()?
                 {
+                    // 拷贝beacon state
                     self.beacon_state = Cow::Owned(beacon_state);
 
+                    // 获取block root和state root
                     let block_root = *self.beacon_state.get_block_root(self.slot)?;
                     let state_root = *self.beacon_state.get_state_root(self.slot)?;
 
                     Ok(Some((block_root, state_root, self.slot)))
                 } else {
                     // No more states available due to weak subjectivity sync.
+                    // 因为weak subjectivity sync，已经没有更多的states可用了
                     Ok(None)
                 }
             }
@@ -358,9 +365,11 @@ impl<'a, T: EthSpec, Hot: ItemStore<T>, Cold: ItemStore<T>> Iterator
 }
 
 /// Fetch the next state to use whilst backtracking in `*RootsIterator`.
+/// 获取下一个state使用，同时回溯`*RootsIterator`
 ///
 /// Return `Err(HistoryUnavailable)` in the case where no more backtrack states are available
 /// due to weak subjectivity sync.
+/// 返回`Err(HistoryUnavailable)`万一没有更多的backtrack state可用，由于weak subjectivity sync
 fn next_historical_root_backtrack_state<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
     store: &HotColdDB<E, Hot, Cold>,
     current_state: &BeaconState<E>,
@@ -369,6 +378,9 @@ fn next_historical_root_backtrack_state<E: EthSpec, Hot: ItemStore<E>, Cold: Ite
     // a restore point slot (thus avoiding replaying blocks). In the case where we're
     // not frozen, this just means we might not jump back by the maximum amount on
     // our first jump (i.e. at most 1 extra state load).
+    // 为了和freezer database的restore points保持一致，我们加载一个在restore point slot的state
+    // 因此避免了replaying blocks，万一我们没有frozen，这意味着我们可能不能jump back，通过我们first jump
+    // 的maximum amount
     let new_state_slot = slot_of_prev_restore_point::<E>(current_state.slot());
 
     let (_, historic_state_upper_limit) = store.get_historic_state_limits();
@@ -376,6 +388,7 @@ fn next_historical_root_backtrack_state<E: EthSpec, Hot: ItemStore<E>, Cold: Ite
     if new_state_slot >= historic_state_upper_limit {
         let new_state_root = current_state.get_state_root(new_state_slot)?;
         Ok(store
+            // 获取之前的restore point的state
             .get_state(new_state_root, Some(new_state_slot))?
             .ok_or_else(|| BeaconStateError::MissingBeaconState((*new_state_root).into()))?)
     } else {
@@ -384,6 +397,7 @@ fn next_historical_root_backtrack_state<E: EthSpec, Hot: ItemStore<E>, Cold: Ite
 }
 
 /// Compute the slot of the last guaranteed restore point in the freezer database.
+/// 计算freezer database中最新的restore point
 fn slot_of_prev_restore_point<E: EthSpec>(current_slot: Slot) -> Slot {
     let slots_per_historical_root = E::SlotsPerHistoricalRoot::to_u64();
     (current_slot - 1) / slots_per_historical_root * slots_per_historical_root
@@ -465,6 +479,7 @@ mod test {
         let mut state_a: BeaconState<MainnetEthSpec> = get_state();
         let mut state_b: BeaconState<MainnetEthSpec> = get_state();
 
+        // 每个historical root的slots
         *state_a.slot_mut() = Slot::from(slots_per_historical_root);
         *state_b.slot_mut() = Slot::from(slots_per_historical_root * 2);
 
@@ -481,17 +496,21 @@ mod test {
                 .unwrap_or_else(|_| panic!("should set state_b slot {}", slot));
         }
 
+        // 设置state a的root和state b的root
         let state_a_root = Hash256::from_low_u64_be(slots_per_historical_root as u64);
         let state_b_root = Hash256::from_low_u64_be(slots_per_historical_root as u64 * 2);
 
+        // 将state放入store
         store.put_state(&state_a_root, &state_a).unwrap();
         store.put_state(&state_b_root, &state_b).unwrap();
 
+        // 构建state roots iterator
         let iter = StateRootsIterator::new(&store, &state_b);
 
         assert!(
             iter.clone()
                 .any(|result| result.map(|(_root, slot)| slot == 0).unwrap()),
+            // iter应该包含zero slot
             "iter should contain zero slot"
         );
 
