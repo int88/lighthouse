@@ -174,6 +174,7 @@ impl<'a, T: EthSpec, Hot: ItemStore<T>, Cold: ItemStore<T>> RootsIterator<'a, T,
     pub fn new(store: &'a HotColdDB<T, Hot, Cold>, beacon_state: &'a BeaconState<T>) -> Self {
         Self {
             store,
+            // 设置beacon state的slot
             slot: beacon_state.slot(),
             beacon_state: Cow::Borrowed(beacon_state),
         }
@@ -212,6 +213,7 @@ impl<'a, T: EthSpec, Hot: ItemStore<T>, Cold: ItemStore<T>> RootsIterator<'a, T,
         match (
             // 根据slot获取block和state
             self.beacon_state.get_block_root(self.slot),
+            // 从beacon state本身保存的state root中获取block root和state root
             self.beacon_state.get_state_root(self.slot),
         ) {
             (Ok(block_root), Ok(state_root)) => Ok(Some((*block_root, *state_root, self.slot))),
@@ -486,6 +488,7 @@ mod test {
         let mut hashes = (0..).map(Hash256::from_low_u64_be);
 
         for slot in 0..slots_per_historical_root {
+            // 在state中设置一系列的state root
             state_a
                 .set_state_root(Slot::from(slot), hashes.next().unwrap())
                 .unwrap_or_else(|_| panic!("should set state_a slot {}", slot));
@@ -526,6 +529,7 @@ mod test {
 
             assert_eq!(slot, i as u64, "slot mismatch at {}: {} vs {}", i, slot, i);
 
+            // 保证哈希值相等
             assert_eq!(
                 hash,
                 Hash256::from_low_u64_be(i as u64),

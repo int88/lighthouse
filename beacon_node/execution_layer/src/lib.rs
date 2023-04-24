@@ -247,6 +247,7 @@ pub struct Config {
 
 /// Provides access to one execution engine and provides a neat interface for consumption by the
 /// `BeaconChain`.
+/// 提供对于一个executijon engine的访问并且提供一个neat interface供`BeaconChain`消费
 #[derive(Clone)]
 pub struct ExecutionLayer<T: EthSpec> {
     inner: Arc<Inner<T>>,

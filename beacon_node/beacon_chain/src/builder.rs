@@ -178,8 +178,10 @@ where
     }
 
     /// Sets the store (database).
+    /// 设置store（数据库）
     ///
     /// Should generally be called early in the build chain.
+    /// 应该在build chain的早期被调用
     pub fn store(mut self, store: Arc<HotColdDB<TEthSpec, THotStore, TColdStore>>) -> Self {
         self.store = Some(store);
         self
@@ -536,14 +538,17 @@ where
     }
 
     /// Sets the `BeaconChain` execution layer.
+    /// 设置`BeaconChain`的execution layer
     pub fn execution_layer(mut self, execution_layer: Option<ExecutionLayer<TEthSpec>>) -> Self {
         self.execution_layer = execution_layer;
         self
     }
 
     /// Sets the `BeaconChain` event handler backend.
+    /// 设置`BeaconChain`的event handler backend
     ///
     /// For example, provide `ServerSentEventHandler` as a `handler`.
+    /// 例如，提供`ServerSentEventHandler`作为一个`hanlder`
     pub fn event_handler(mut self, handler: Option<ServerSentEventHandler<TEthSpec>>) -> Self {
         self.event_handler = handler;
         self
@@ -583,12 +588,14 @@ where
     }
 
     /// Sets the `ChainConfig` that determines `BeaconChain` runtime behaviour.
+    /// 设置`ChainConfig`来决定`BeaconChain`的运行时行为
     pub fn chain_config(mut self, config: ChainConfig) -> Self {
         self.chain_config = config;
         self
     }
 
     /// Register some validators for additional monitoring.
+    /// 注册一些validators用于额外的监控
     ///
     /// `validators` is a comma-separated string of 0x-formatted BLS pubkeys.
     pub fn monitor_validators(
@@ -937,6 +944,7 @@ where
     }
 
     /// Sets the `BeaconChain` eth1 back-end to produce predictably junk data when producing blocks.
+    /// 设置`BeaconChain`的eth1 backend，来生成可预见的junk data，在生成blocks的时候
     pub fn dummy_eth1_backend(mut self) -> Result<Self, String> {
         let log = self
             .log

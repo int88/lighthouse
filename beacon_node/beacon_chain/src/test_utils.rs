@@ -180,6 +180,7 @@ impl<E: EthSpec> Builder<EphemeralHarnessType<E>> {
             .clone()
             .expect("cannot build without validator keypairs");
 
+        // 构建一个store
         let store = Arc::new(
             HotColdDB::open_ephemeral(
                 self.store_config.clone().unwrap_or_default(),
@@ -284,6 +285,7 @@ where
     Hot: ItemStore<E>,
     Cold: ItemStore<E>,
 {
+    // 构建一个新的builder
     pub fn new(eth_spec_instance: E) -> Self {
         let runtime = TestRuntime::default();
         let log = runtime.log.clone();
@@ -516,6 +518,7 @@ where
             .validator_keypairs
             .expect("cannot build without validator keypairs");
 
+        // 构建真正的builder
         let mut builder = BeaconChainBuilder::new(self.eth_spec_instance)
             .logger(log.clone())
             .custom_spec(spec)
@@ -546,6 +549,7 @@ where
         };
 
         // Initialize the slot clock only if it hasn't already been initialized.
+        // 初始化slot clock，只有它还没有初始化的时候
         builder = if let Some(testing_slot_clock) = self.testing_slot_clock {
             builder.slot_clock(testing_slot_clock)
         } else if builder.get_slot_clock().is_none() {
@@ -574,6 +578,7 @@ where
 
 /// A testing harness which can instantiate a `BeaconChain` and populate it with blocks and
 /// attestations.
+/// 一个testing harness用于实例化一个`BeaconChain`并且填充blocks以及attestations
 ///
 /// Used for testing.
 pub struct BeaconChainHarness<T: BeaconChainTypes> {
@@ -2005,8 +2010,10 @@ where
     ///             instead
     ///
     /// Advance the slot of the `BeaconChain`.
+    /// 将`BeaconChain`的slot向前移动
     ///
     /// Does not produce blocks or attestations.
+    /// 不要生成blocks或者attestations
     pub fn advance_slot(&self) {
         self.chain.slot_clock.advance_slot();
     }
