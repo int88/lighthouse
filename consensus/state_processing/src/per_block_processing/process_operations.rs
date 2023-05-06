@@ -9,6 +9,7 @@ use crate::VerifySignatures;
 use safe_arith::SafeArith;
 use types::consts::altair::{PARTICIPATION_FLAG_WEIGHTS, PROPOSER_WEIGHT, WEIGHT_DENOMINATOR};
 
+// 处理operations
 pub fn process_operations<T: EthSpec, Payload: AbstractExecPayload<T>>(
     state: &mut BeaconState<T>,
     block_body: BeaconBlockBodyRef<T, Payload>,
@@ -16,6 +17,7 @@ pub fn process_operations<T: EthSpec, Payload: AbstractExecPayload<T>>(
     ctxt: &mut ConsensusContext<T>,
     spec: &ChainSpec,
 ) -> Result<(), BlockProcessingError> {
+    // 处理proposer slashings
     process_proposer_slashings(
         state,
         block_body.proposer_slashings(),
@@ -23,6 +25,7 @@ pub fn process_operations<T: EthSpec, Payload: AbstractExecPayload<T>>(
         ctxt,
         spec,
     )?;
+    // 处理attester slashing
     process_attester_slashings(
         state,
         block_body.attester_slashings(),
@@ -30,7 +33,9 @@ pub fn process_operations<T: EthSpec, Payload: AbstractExecPayload<T>>(
         ctxt,
         spec,
     )?;
+    // 处理attestations
     process_attestations(state, block_body, verify_signatures, ctxt, spec)?;
+    // 处理deposits
     process_deposits(state, block_body.deposits(), spec)?;
     process_exits(state, block_body.voluntary_exits(), verify_signatures, spec)?;
 
@@ -253,6 +258,7 @@ pub fn process_attestations<T: EthSpec, Payload: AbstractExecPayload<T>>(
 ) -> Result<(), BlockProcessingError> {
     match block_body {
         BeaconBlockBodyRef::Base(_) => {
+            // 处理base的attestations
             base::process_attestations(
                 state,
                 block_body.attestations(),
@@ -264,6 +270,7 @@ pub fn process_attestations<T: EthSpec, Payload: AbstractExecPayload<T>>(
         BeaconBlockBodyRef::Altair(_)
         | BeaconBlockBodyRef::Merge(_)
         | BeaconBlockBodyRef::Capella(_) => {
+            // 处理altair，Merge和Capella的attestations
             altair::process_attestations(
                 state,
                 block_body.attestations(),

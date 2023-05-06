@@ -120,20 +120,26 @@ impl ValidatorStatus {
 
 /// The total effective balances for different sets of validators during the previous and current
 /// epochs.
+/// 对于previous和current epochs的不同validators的总effective balances
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "arbitrary-fuzz", derive(Arbitrary))]
 pub struct TotalBalances {
     /// The effective balance increment from the spec.
+    /// 从spec中的effective balance increment
     effective_balance_increment: u64,
     /// The total effective balance of all active validators during the _current_ epoch.
+    /// 在_current_ epoch中，所有active validators的总effective balance
     current_epoch: u64,
     /// The total effective balance of all active validators during the _previous_ epoch.
     previous_epoch: u64,
     /// The total effective balance of all validators who attested during the _current_ epoch.
+    /// 在_current_ epoch中，所有attested的validators的总effective balance
     current_epoch_attesters: u64,
     /// The total effective balance of all validators who attested during the _current_ epoch and
     /// agreed with the state about the beacon block at the first slot of the _current_ epoch.
+    /// 所有validators的总effective balance，他们在_current_ epoch中attested，并且在当前epoch的第一个slot
+    /// 同意state的beacon block
     current_epoch_target_attesters: u64,
     /// The total effective balance of all validators who attested during the _previous_ epoch.
     previous_epoch_attesters: u64,
@@ -179,6 +185,7 @@ impl TotalBalances {
 
 /// Summarised information about validator participation in the _previous and _current_ epochs of
 /// some `BeaconState`.
+/// 总结信息，关于validator在之前以及当前的epoch的参与度，对于一些`BeaconState`
 #[cfg_attr(feature = "arbitrary-fuzz", derive(Arbitrary))]
 #[derive(Debug, Clone)]
 pub struct ValidatorStatuses {
@@ -192,9 +199,12 @@ pub struct ValidatorStatuses {
 
 impl ValidatorStatuses {
     /// Initializes a new instance, determining:
+    /// 初始化一个新的实例，决定：
     ///
     /// - Active validators
+    /// - 活跃的validators
     /// - Total balances for the current and previous epochs.
+    /// - 当前以及之前的epochs的total balances
     ///
     /// Spec v0.12.1
     pub fn new<T: EthSpec>(

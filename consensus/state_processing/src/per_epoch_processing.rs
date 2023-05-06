@@ -49,6 +49,7 @@ pub fn process_epoch<T: EthSpec>(
 }
 
 /// Used to track the changes to a validator's balance.
+/// 用于跟踪validator的balance的变化
 #[derive(Default, Clone)]
 pub struct Delta {
     pub rewards: u64,

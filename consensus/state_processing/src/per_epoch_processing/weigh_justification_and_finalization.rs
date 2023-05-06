@@ -4,6 +4,7 @@ use std::ops::Range;
 use types::{Checkpoint, EthSpec};
 
 /// Update the justified and finalized checkpoints for matching target attestations.
+/// 更新justified和finalized checkpoints，匹配target attestations
 #[allow(clippy::if_same_then_else)] // For readability and consistency with spec.
 pub fn weigh_justification_and_finalization<T: EthSpec>(
     mut state: JustificationAndFinalizationState<T>,
@@ -18,6 +19,7 @@ pub fn weigh_justification_and_finalization<T: EthSpec>(
     let old_current_justified_checkpoint = state.current_justified_checkpoint();
 
     // Process justifications
+    // 处理justifications
     *state.previous_justified_checkpoint_mut() = state.current_justified_checkpoint();
     state.justification_bits_mut().shift_up(1)?;
 
@@ -29,6 +31,7 @@ pub fn weigh_justification_and_finalization<T: EthSpec>(
         state.justification_bits_mut().set(1, true)?;
     }
     // If the current epoch gets justified, fill the last bit.
+    // 如当前的epoch被justified，填充最后一位
     if current_target_balance.safe_mul(3)? >= total_active_balance.safe_mul(2)? {
         *state.current_justified_checkpoint_mut() = Checkpoint {
             epoch: current_epoch,

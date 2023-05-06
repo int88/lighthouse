@@ -13,8 +13,11 @@ fn error(reason: Invalid) -> BlockOperationError<Invalid> {
 
 /// Returns `Ok(())` if the given `attestation` is valid to be included in a block that is applied
 /// to `state`. Otherwise, returns a descriptive `Err`.
+/// 返回`Ok(())`，如果给定的`attestation`是有效的，被包含在一个block中，这个block被应用到`state`。
+/// 否则，返回一个描述性的`Err`
 ///
 /// Optionally verifies the aggregate signature, depending on `verify_signatures`.
+/// 可选地验证聚合签名，取决于`verify_signatures`
 pub fn verify_attestation_for_block_inclusion<'ctxt, T: EthSpec>(
     state: &BeaconState<T>,
     attestation: &Attestation<T>,
@@ -45,9 +48,11 @@ pub fn verify_attestation_for_block_inclusion<'ctxt, T: EthSpec>(
 
 /// Returns `Ok(())` if `attestation` is a valid attestation to the chain that precedes the given
 /// `state`.
+/// 返回`Ok(())`，如果`attestation`是一个有效的attestation，到达给定的`state`之前的chain
 ///
 /// Returns a descriptive `Err` if the attestation is malformed or does not accurately reflect the
 /// prior blocks in `state`.
+/// 返回一个描述性的`Err`，如果attestation是畸形的或者不准确地反映了`state`中的先前的blocks
 ///
 /// Spec v0.12.1
 pub fn verify_attestation_for_state<'ctxt, T: EthSpec>(

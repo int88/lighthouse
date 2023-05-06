@@ -16,6 +16,7 @@ impl From<ArithError> for Error {
 
 /// Defines the epochs relative to some epoch. Most useful when referring to the committees prior
 /// to and following some epoch.
+/// 定义相对于某个epoch的epochs，当引用某个epoch之前和之后的committees时最有用
 ///
 /// Spec v0.12.1
 #[derive(Debug, PartialEq, Clone, Copy, arbitrary::Arbitrary)]

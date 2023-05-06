@@ -7,6 +7,7 @@ use safe_arith::SafeArith;
 use types::{BeaconState, ChainSpec, EthSpec};
 
 /// Update the justified and finalized checkpoints for matching target attestations.
+/// 更新匹配target attestations的justified和finalized checkpoints
 pub fn process_justification_and_finalization<T: EthSpec>(
     state: &BeaconState<T>,
     total_balances: &TotalBalances,

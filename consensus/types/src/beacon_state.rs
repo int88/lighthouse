@@ -1440,6 +1440,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Build an epoch cache, unless it is has already been built.
+    /// 构建一个epoch cache，除非它已经被构建
     pub fn build_committee_cache(
         &mut self,
         relative_epoch: RelativeEpoch,

@@ -2,13 +2,17 @@ use types::{BeaconState, BeaconStateError, BitVector, Checkpoint, Epoch, EthSpec
 
 /// This is a subset of the `BeaconState` which is used to compute justification and finality
 /// without modifying the `BeaconState`.
+/// 这是`BeaconState`的一个子集，用于计算justification和finality，而不修改`BeaconState`
 ///
 /// A `JustificationAndFinalizationState` can be created from a `BeaconState` to compute
 /// justification/finality changes and then applied to a `BeaconState` to enshrine those changes.
+/// 一个`JustificationAndFinalizationState`可以从一个`BeaconState`创建，用于计算justification/finality的变化，
+/// 然后应用到一个`BeaconState`上，以确保这些变化
 #[must_use = "this value must be applied to a state or explicitly dropped"]
 pub struct JustificationAndFinalizationState<T: EthSpec> {
     /*
      * Immutable fields.
+     * 不可变的字段
      */
     previous_epoch: Epoch,
     previous_epoch_target_root: Result<Hash256, BeaconStateError>,
@@ -16,6 +20,7 @@ pub struct JustificationAndFinalizationState<T: EthSpec> {
     current_epoch_target_root: Result<Hash256, BeaconStateError>,
     /*
      * Mutable fields.
+     * 可变的字段
      */
     previous_justified_checkpoint: Checkpoint,
     current_justified_checkpoint: Checkpoint,
@@ -25,6 +30,7 @@ pub struct JustificationAndFinalizationState<T: EthSpec> {
 
 impl<T: EthSpec> JustificationAndFinalizationState<T> {
     pub fn new(state: &BeaconState<T>) -> Self {
+        // 获取previous_epoch和current_epoch
         let previous_epoch = state.previous_epoch();
         let current_epoch = state.current_epoch();
         Self {

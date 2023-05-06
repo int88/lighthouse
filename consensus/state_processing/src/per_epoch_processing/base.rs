@@ -31,6 +31,7 @@ pub fn process_epoch<T: EthSpec>(
     //
     // E.g., attestation in the previous epoch, attested to the head, etc.
     let mut validator_statuses = ValidatorStatuses::new(state, spec)?;
+    // 处理attestations
     validator_statuses.process_attestations(state)?;
 
     // Justification and finalization.
@@ -44,9 +45,11 @@ pub fn process_epoch<T: EthSpec>(
     process_rewards_and_penalties(state, &mut validator_statuses, spec)?;
 
     // Registry Updates.
+    // 更新registry
     process_registry_updates(state, spec)?;
 
     // Slashings.
+    // 处理slashings
     process_slashings(
         state,
         validator_statuses.total_balances.current_epoch(),
@@ -54,9 +57,11 @@ pub fn process_epoch<T: EthSpec>(
     )?;
 
     // Reset eth1 data votes.
+    // 重置eth1的data votes
     process_eth1_data_reset(state)?;
 
     // Update effective balances with hysteresis (lag).
+    // 使用滞后更新effective balances
     process_effective_balance_updates(state, spec)?;
 
     // Reset slashings

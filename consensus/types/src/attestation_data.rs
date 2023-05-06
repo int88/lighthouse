@@ -31,9 +31,11 @@ pub struct AttestationData {
     pub index: u64,
 
     // LMD GHOST vote
+    // LMD GHOST的投票
     pub beacon_block_root: Hash256,
 
     // FFG Vote
+    // FFG的Vote
     pub source: Checkpoint,
     pub target: Checkpoint,
 }

@@ -44,16 +44,21 @@ use crate::common::decrease_balance;
 use arbitrary::Arbitrary;
 
 /// The strategy to be used when validating the block's signatures.
+/// 当校验block的signatures时使用的策略
 #[cfg_attr(feature = "arbitrary-fuzz", derive(Arbitrary))]
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum BlockSignatureStrategy {
     /// Do not validate any signature. Use with caution.
+    /// 不校验任何signature，谨慎使用
     NoVerification,
     /// Validate each signature individually, as its object is being processed.
+    /// 单独校验每个signature，当它的object被处理时
     VerifyIndividual,
     /// Validate only the randao reveal signature.
+    /// 只校验randao reveal signature
     VerifyRandao,
     /// Verify all signatures in bulk at the beginning of block processing.
+    /// 校验block处理开始时的所有signatures
     VerifyBulk,
 }
 
@@ -105,11 +110,13 @@ pub fn per_block_processing<T: EthSpec, Payload: AbstractExecPayload<T>>(
     let block = signed_block.message();
 
     // Verify that the `SignedBeaconBlock` instantiation matches the fork at `signed_block.slot()`.
+    // 校验`SignedBeaconBlock`的实例化，匹配`signed_block.slot()`的fork
     signed_block
         .fork_name(spec)
         .map_err(BlockProcessingError::InconsistentBlockFork)?;
 
     // Verify that the `BeaconState` instantiation matches the fork at `state.slot()`.
+    // 校验`BeaconState`的实例化，匹配`state.slot()`的fork
     state
         .fork_name(spec)
         .map_err(BlockProcessingError::InconsistentStateFork)?;
@@ -163,6 +170,8 @@ pub fn per_block_processing<T: EthSpec, Payload: AbstractExecPayload<T>>(
     // The call to the `process_execution_payload` must happen before the call to the
     // `process_randao` as the former depends on the `randao_mix` computed with the reveal of the
     // previous block.
+    // 对于`process_execution_payload`的调用必须在对`process_randao`的调用之前，因为前者依赖于
+    // `randao_mix`，它是用前一个block的reveal计算出来的
     if is_execution_enabled(state, block.body()) {
         let payload = block.body().execution_payload()?;
         process_withdrawals::<T, Payload>(state, payload, spec)?;
