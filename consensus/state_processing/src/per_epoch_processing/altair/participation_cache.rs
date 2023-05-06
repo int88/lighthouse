@@ -53,25 +53,32 @@ impl Balance {
 }
 
 /// Caches the participation values for one epoch (either the previous or current).
+/// 对于一个epoch，缓存participation的值（之前或者当前）
 #[derive(PartialEq, Debug)]
 struct SingleEpochParticipationCache {
     /// Maps an active validator index to their participation flags.
+    /// 映射一个active validator的index到他们的participation flags
     ///
     /// To reiterate, only active and unslashed validator indices are stored in this map.
+    /// 为了重申，只有active和unslashed的validator indices被存储在这个map中
     ///
     /// ## Note
     ///
     /// It would be ideal to maintain a reference to the `BeaconState` here rather than copying the
     /// `ParticipationFlags`, however that would cause us to run into mutable reference limitations
     /// upstream.
+    /// 这会更理想，维护一个`BeaconState`的引用在这里，而不是复制`ParticipationFlags`，然而这会导致我们遇到可变引用的限制
     unslashed_participating_indices: Vec<Option<ParticipationFlags>>,
     /// Stores the sum of the balances for all validators in `self.unslashed_participating_indices`
     /// for all flags in `NUM_FLAG_INDICES`.
+    /// 存储所有validators的balances的总和，在`self.unslashed_participating_indices`中，对于所有的flags在`NUM_FLAG_INDICES`中
     ///
     /// A flag balance is only incremented if a validator is in that flag set.
+    /// 一个flag balance增长只有在一个validator在这个flag set中
     total_flag_balances: [Balance; NUM_FLAG_INDICES],
     /// Stores the sum of all balances of all validators in `self.unslashed_participating_indices`
     /// (regardless of which flags are set).
+    /// 存储所有validators的balances的总和，在`self.unslashed_participating_indices`中（不管哪个flag被设置）
     total_active_balance: Balance,
 }
 
@@ -178,11 +185,14 @@ impl SingleEpochParticipationCache {
 pub struct ParticipationCache {
     current_epoch: Epoch,
     /// Caches information about active validators pertaining to `self.current_epoch`.
+    /// 缓存信息关于active validators，关于`self.current_epoch`
     current_epoch_participation: SingleEpochParticipationCache,
     previous_epoch: Epoch,
     /// Caches information about active validators pertaining to `self.previous_epoch`.
+    /// 缓存信息关于active validators，关于`self.previous_epoch`
     previous_epoch_participation: SingleEpochParticipationCache,
     /// Caches the result of the `get_eligible_validator_indices` function.
+    /// 缓存结果，对于`get_eligible_validator_indices`函数
     eligible_indices: Vec<usize>,
 }
 

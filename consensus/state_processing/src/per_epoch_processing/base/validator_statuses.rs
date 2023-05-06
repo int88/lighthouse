@@ -62,6 +62,7 @@ pub struct ValidatorStatus {
     /// True if the validator was active in the state's _previous_ epoch.
     pub is_active_in_previous_epoch: bool,
     /// The validator's effective balance in the _current_ epoch.
+    /// 在当前的epoch，validator的effective balance
     pub current_epoch_effective_balance: u64,
 
     /// True if the validator had an attestation included in the _current_ epoch.
@@ -76,9 +77,12 @@ pub struct ValidatorStatus {
     pub is_previous_epoch_attester: bool,
     /// True if the validator's beacon block root attestation for the first slot of the _previous_
     /// epoch matches the block root known to the state.
+    /// True如果validator的beacon block root attestation，对于之前epoch的第一个slot，匹配state中已知的block root
     pub is_previous_epoch_target_attester: bool,
     /// True if the validator's beacon block root attestation in the _previous_ epoch at the
     /// attestation's slot (`attestation_data.slot`) matches the block root known to the state.
+    /// 返回true，如果validator的beacon block root attestation，在之前的epoch的attestation的slot，
+    /// 匹配state中已知的block root
     pub is_previous_epoch_head_attester: bool,
 
     /// Information used to reward the block producer of this validators earliest-included
@@ -98,6 +102,7 @@ impl ValidatorStatus {
     pub fn update(&mut self, other: &Self) {
         // Update all the bool fields, only updating `self` if `other` is true (never setting
         // `self` to false).
+        // 更新所有的bool字段，只更新`self`如果`other`为true（从不设置`self`为false）
         set_self_if_other_is_true!(self, other, is_slashed);
         set_self_if_other_is_true!(self, other, is_withdrawable_in_current_epoch);
         set_self_if_other_is_true!(self, other, is_active_in_current_epoch);
@@ -132,6 +137,7 @@ pub struct TotalBalances {
     /// 在_current_ epoch中，所有active validators的总effective balance
     current_epoch: u64,
     /// The total effective balance of all active validators during the _previous_ epoch.
+    /// 在之前的epoch中，所有active validators的总effective balance
     previous_epoch: u64,
     /// The total effective balance of all validators who attested during the _current_ epoch.
     /// 在_current_ epoch中，所有attested的validators的总effective balance
@@ -142,16 +148,22 @@ pub struct TotalBalances {
     /// 同意state的beacon block
     current_epoch_target_attesters: u64,
     /// The total effective balance of all validators who attested during the _previous_ epoch.
+    /// 所有在_previous_ epoch中attested的validators的总effective balance
     previous_epoch_attesters: u64,
     /// The total effective balance of all validators who attested during the _previous_ epoch and
     /// agreed with the state about the beacon block at the first slot of the _previous_ epoch.
+    /// 所有validators的总effective balance，他们在_previous_ epoch中attested，并且在之前epoch的第一个slot
+    /// 同意state的beacon block
     previous_epoch_target_attesters: u64,
     /// The total effective balance of all validators who attested during the _previous_ epoch and
     /// agreed with the state about the beacon block at the time of attestation.
+    /// 所有validators的总effective balance，他们在_previous_ epoch中attested，并且在attestation的时候
+    /// 同意state的beacon block
     previous_epoch_head_attesters: u64,
 }
 
 // Generate a safe accessor for a balance in `TotalBalances`, as per spec `get_total_balance`.
+// 生成一个安全的accessor，对于`TotalBalances`中的balance，根据spec的`get_total_balance`
 macro_rules! balance_accessor {
     ($field_name:ident) => {
         pub fn $field_name(&self) -> u64 {
@@ -214,8 +226,11 @@ impl ValidatorStatuses {
         let mut statuses = Vec::with_capacity(state.validators().len());
         let mut total_balances = TotalBalances::new(spec);
 
+        // 遍历state中的validators
         for (i, validator) in state.validators().iter().enumerate() {
+            // 获取这个validator的effective balance
             let effective_balance = state.get_effective_balance(i)?;
+            // 构建validator status
             let mut status = ValidatorStatus {
                 is_slashed: validator.slashed,
                 is_withdrawable_in_current_epoch: validator
@@ -225,6 +240,7 @@ impl ValidatorStatuses {
             };
 
             if validator.is_active_at(state.current_epoch()) {
+                // validator在当前是active
                 status.is_active_in_current_epoch = true;
                 total_balances
                     .current_epoch
@@ -232,12 +248,14 @@ impl ValidatorStatuses {
             }
 
             if validator.is_active_at(state.previous_epoch()) {
+                // validator在之前的epoch是active
                 status.is_active_in_previous_epoch = true;
                 total_balances
                     .previous_epoch
                     .safe_add_assign(effective_balance)?;
             }
 
+            // 推送status
             statuses.push(status);
         }
 
@@ -264,6 +282,7 @@ impl ValidatorStatuses {
             .chain(base_state.current_epoch_attestations.iter())
         {
             let committee = state.get_beacon_committee(a.data.slot, a.data.index)?;
+            // 获取attesting indices
             let attesting_indices =
                 get_attesting_indices::<T>(committee.committee, &a.aggregation_bits)?;
 
@@ -316,9 +335,11 @@ impl ValidatorStatuses {
         // 计算全部的balances
         for (index, v) in self.statuses.iter().enumerate() {
             // According to the spec, we only count unslashed validators towards the totals.
+            // 根据spec，我们只计算unslashed validators的totals
             if !v.is_slashed {
                 let validator_balance = state.get_effective_balance(index)?;
 
+                // 添加validator balance
                 if v.is_current_epoch_attester {
                     self.total_balances
                         .current_epoch_attesters
@@ -353,6 +374,7 @@ impl ValidatorStatuses {
 
 /// Returns `true` if the attestation's FFG target is equal to the hash of the `state`'s first
 /// beacon block in the given `epoch`.
+/// 返回`true`，如果attestation的FFG target等于`state`的第一个beacon block的hash，在给定的`epoch`
 ///
 /// Spec v0.12.1
 fn target_matches_epoch_start_block<T: EthSpec>(
@@ -374,7 +396,9 @@ fn has_common_beacon_block_root<T: EthSpec>(
     a: &PendingAttestation<T>,
     state: &BeaconState<T>,
 ) -> Result<bool, BeaconStateError> {
+    // 获取block root
     let state_block_root = *state.get_block_root(a.data.slot)?;
 
+    // 确保两者的block root相等
     Ok(a.data.beacon_block_root == state_block_root)
 }

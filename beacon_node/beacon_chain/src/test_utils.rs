@@ -100,19 +100,24 @@ pub enum BlockStrategy {
 }
 
 /// Deprecated: Indicates how the `BeaconChainHarness` should produce attestations.
+/// 表明`BeaconChainHarness`应该如何产生attestations
 #[derive(Clone, Debug)]
 pub enum AttestationStrategy {
     /// All validators attest to whichever block the `BeaconChainHarness` has produced.
+    /// 所有validatros都校验`BeaconChainHarness`产生的block
     AllValidators,
     /// Only the given validators should attest. All others should fail to produce attestations.
+    /// 只有给定的validators应该校验，其他的都应该失败
     SomeValidators(Vec<usize>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SyncCommitteeStrategy {
     /// All sync committee validators sign.
+    /// 所有的sync committee validators都应该签名
     AllValidators,
     /// No validators sign.
+    /// 没有validators签名
     NoValidators,
 }
 

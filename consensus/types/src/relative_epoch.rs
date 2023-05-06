@@ -22,10 +22,13 @@ impl From<ArithError> for Error {
 #[derive(Debug, PartialEq, Clone, Copy, arbitrary::Arbitrary)]
 pub enum RelativeEpoch {
     /// The prior epoch.
+    /// 之前的Epoch
     Previous,
     /// The current epoch.
+    /// 当前的epoch
     Current,
     /// The next epoch.
+    /// 下一个epoch
     Next,
 }
 

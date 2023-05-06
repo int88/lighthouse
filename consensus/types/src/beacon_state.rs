@@ -564,8 +564,10 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Get the Beacon committee at the given slot and index.
+    /// 获取给定slot和索引的Beacon committee
     ///
     /// Utilises the committee cache.
+    /// 使用committee cache
     ///
     /// Spec v0.12.1
     pub fn get_beacon_committee(
@@ -575,6 +577,7 @@ impl<T: EthSpec> BeaconState<T> {
     ) -> Result<BeaconCommittee, Error> {
         let epoch = slot.epoch(T::slots_per_epoch());
         let relative_epoch = RelativeEpoch::from_epoch(self.current_epoch(), epoch)?;
+        // 获取committee cache
         let cache = self.committee_cache(relative_epoch)?;
 
         cache
@@ -1163,6 +1166,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Convenience accessor for validators and balances simultaneously.
+    /// 方便的访问器，同时访问validators和balances
     pub fn validators_and_balances_mut(&mut self) -> (&mut [Validator], &mut [u64]) {
         match self {
             BeaconState::Base(state) => (&mut state.validators, &mut state.balances),
@@ -1222,6 +1226,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Return the effective balance for a validator with the given `validator_index`.
+    /// 返回给定的`validator_index`的validator的有效余额
     pub fn get_effective_balance(&self, validator_index: usize) -> Result<u64, Error> {
         self.get_validator(validator_index)
             .map(|v| v.effective_balance)
@@ -1487,11 +1492,14 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Advances the cache for this state into the next epoch.
+    /// 移动这个state的cache到下一个epoch
     ///
     /// This should be used if the `slot` of this state is advanced beyond an epoch boundary.
+    /// 这应该被使用，如果这个state的slot超过了一个epoch的边界
     ///
     /// Note: this function will not build any new committee caches, but will build the total
     /// balance cache if the (new) current epoch cache is initialized.
+    /// 注意：这个函数不会构建任何新的committee cache，但是会构建总余额cache，如果（新的）当前epoch cache被初始化
     pub fn advance_caches(&mut self, spec: &ChainSpec) -> Result<(), Error> {
         self.committee_caches_mut().rotate_left(1);
 
@@ -1558,6 +1566,7 @@ impl<T: EthSpec> BeaconState<T> {
 
     /// Returns the cache for some `RelativeEpoch`. Returns an error if the cache has not been
     /// initialized.
+    /// 返回一些`RelativeEpoch`的cache。如果cache没有被初始化，返回一个错误。
     pub fn committee_cache(&self, relative_epoch: RelativeEpoch) -> Result<&CommitteeCache, Error> {
         let i = Self::committee_cache_index(relative_epoch);
         let cache = self.committee_cache_at_index(i)?;

@@ -12,7 +12,9 @@ pub fn process_registry_updates<T: EthSpec>(
     spec: &ChainSpec,
 ) -> Result<(), Error> {
     // Process activation eligibility and ejections.
+    // 处理激活的资格和退出
     // Collect eligible and exiting validators (we need to avoid mutating the state while iterating).
+    // 收集合格的和退出的validators（我们需要避免在迭代时改变state）
     // We assume it's safe to re-order the change in eligibility and `initiate_validator_exit`.
     // Rest assured exiting validators will still be exited in the same order as in the spec.
     let current_epoch = state.current_epoch();
@@ -52,6 +54,7 @@ pub fn process_registry_updates<T: EthSpec>(
         .collect_vec();
 
     // Dequeue validators for activation up to churn limit
+    // 出队validators激活到churn limit
     let churn_limit = state.get_churn_limit(spec)? as usize;
     let delayed_activation_epoch = state.compute_activation_exit_epoch(current_epoch, spec)?;
     for index in activation_queue.into_iter().take(churn_limit) {

@@ -35,8 +35,10 @@ impl<T: EthSpec> JustificationAndFinalizationState<T> {
         let current_epoch = state.current_epoch();
         Self {
             previous_epoch,
+            // 获取之前的epoch的target root
             previous_epoch_target_root: state.get_block_root_at_epoch(previous_epoch).copied(),
             current_epoch,
+            // 获取当前epoch的target root
             current_epoch_target_root: state.get_block_root_at_epoch(current_epoch).copied(),
             previous_justified_checkpoint: state.previous_justified_checkpoint(),
             current_justified_checkpoint: state.current_justified_checkpoint(),
@@ -49,6 +51,7 @@ impl<T: EthSpec> JustificationAndFinalizationState<T> {
         let Self {
             /*
              * Immutable fields do not need to be used.
+             * 不可变的字段不需要使用
              */
             previous_epoch: _,
             previous_epoch_target_root: _,
@@ -56,6 +59,7 @@ impl<T: EthSpec> JustificationAndFinalizationState<T> {
             current_epoch_target_root: _,
             /*
              * Mutable fields *must* be used.
+             * 可变的字段必须使用
              */
             previous_justified_checkpoint,
             current_justified_checkpoint,
