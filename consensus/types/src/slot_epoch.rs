@@ -85,11 +85,13 @@ impl Epoch {
     }
 
     /// The first slot in the epoch.
+    /// epoch的第一个slot
     pub fn start_slot(self, slots_per_epoch: u64) -> Slot {
         Slot::from(self.0.saturating_mul(slots_per_epoch))
     }
 
     /// The last slot in the epoch.
+    /// epoch的最后一个slot
     pub fn end_slot(self, slots_per_epoch: u64) -> Slot {
         Slot::from(
             self.0

@@ -115,6 +115,7 @@ pub enum Error {
         deposit_index: u64,
     },
     /// Attestation slipped through block processing with a non-matching source.
+    /// 在block处理期间，attestation通过了，但是source不匹配
     IncorrectAttestationSource,
     /// An arithmetic operation occurred which would have overflowed or divided by 0.
     ///
@@ -262,6 +263,7 @@ where
     pub current_epoch_attestations: VariableList<PendingAttestation<T>, T::MaxPendingAttestations>,
 
     // Participation (Altair and later)
+    // 参与度（Altair以及之后）
     #[superstruct(only(Altair, Merge, Capella))]
     pub previous_epoch_participation: VariableList<ParticipationFlags, T::ValidatorRegistryLimit>,
     #[superstruct(only(Altair, Merge, Capella))]
@@ -982,6 +984,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Return the block root at a recent `epoch`.
+    /// 返回block root，在一个最近的`epoch`
     ///
     /// Note that the spec calls this `get_block_root`.
     pub fn get_block_root_at_epoch(&self, epoch: Epoch) -> Result<&Hash256, BeaconStateError> {
@@ -1712,6 +1715,7 @@ impl<T: EthSpec> BeaconState<T> {
 
     /// Passing `previous_epoch` to this function rather than computing it internally provides
     /// a tangible speed improvement in state processing.
+    /// 传入`previous_epoch`到这个函数，而不是在内部计算，提供了一个实际的速度提升在state处理中
     pub fn is_eligible_validator(
         &self,
         previous_epoch: Epoch,

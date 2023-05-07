@@ -120,6 +120,7 @@ pub mod altair {
             .iter()
             .enumerate()
             .try_for_each(|(i, attestation)| {
+                // 处理attestation
                 process_attestation(state, attestation, i, ctxt, verify_signatures, spec)
             })
     }
@@ -135,8 +136,10 @@ pub mod altair {
         state.build_committee_cache(RelativeEpoch::Previous, spec)?;
         state.build_committee_cache(RelativeEpoch::Current, spec)?;
 
+        // 获取proposer index
         let proposer_index = ctxt.get_proposer_index(state, spec)?;
 
+        // 校验atteastation
         let attesting_indices = &verify_attestation_for_block_inclusion(
             state,
             attestation,
@@ -148,12 +151,15 @@ pub mod altair {
         .attesting_indices;
 
         // Matching roots, participation flag indices
+        // 匹配roots，participation flag indices
         let data = &attestation.data;
+        // 当前state的slot和attestation的slot的差值
         let inclusion_delay = state.slot().safe_sub(data.slot)?.as_u64();
         let participation_flag_indices =
             get_attestation_participation_flag_indices(state, data, inclusion_delay, spec)?;
 
         // Update epoch participation flags.
+        // 更新epoch participation flags
         let total_active_balance = state.get_total_active_balance()?;
         let base_reward_per_increment = BaseRewardPerIncrement::new(total_active_balance, spec)?;
         let mut proposer_reward_numerator = 0;
@@ -161,7 +167,9 @@ pub mod altair {
             let index = *index as usize;
 
             for (flag_index, &weight) in PARTICIPATION_FLAG_WEIGHTS.iter().enumerate() {
+                // 获取target epoch的participation
                 let epoch_participation = state.get_epoch_participation_mut(data.target.epoch)?;
+                // 获取对应validator的participation
                 let validator_participation = epoch_participation
                     .get_mut(index)
                     .ok_or(BeaconStateError::ParticipationOutOfBounds(index))?;

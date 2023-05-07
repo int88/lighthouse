@@ -11,15 +11,19 @@ use types::{AbstractExecPayload, BeaconBlockRef, BeaconState, Checkpoint, EthSpe
 /// ## Detail
 ///
 /// This is only an approximation for two reasons:
+/// 这只是一个近似值，原因有两个：
 ///
 /// - This crate stores the actual block DAG in `ProtoArrayForkChoice`.
+/// - 这个crate在`ProtoArrayForkChoice`中存储了实际的块DAG。
 /// - `time` is represented using `Slot` instead of UNIX epoch `u64`.
+/// - `time`是用`Slot`表示的，而不是UNIX epoch `u64`。
 ///
 /// ## Motiviation
 ///
 /// The primary motivation for defining this as a trait to be implemented upstream rather than a
 /// concrete struct is to allow this crate to be free from "impure" on-disk database logic,
 /// hopefully making auditing easier.
+/// 定义为一个上游实现的trait而不是一个具体的struct的主要动机是，使这个crate摆脱“不纯”的磁盘数据库逻辑，希望使审计更容易。
 pub trait ForkChoiceStore<T: EthSpec>: Sized {
     type Error: Debug;
 

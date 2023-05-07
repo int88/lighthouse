@@ -1,15 +1,22 @@
 //! Provides the `ParticipationCache`, a custom Lighthouse cache which attempts to reduce CPU and
 //! memory usage by:
+//! 提供`ParticipationCache`，一个自定义的Lighthouse cache，它试图通过：
 //!
 //! - Caching a map of `validator_index -> participation_flags` for all active validators in the
 //!   previous and current epochs.
+//! - 缓存一个map，`validator_index -> participation_flags`，对于所有的active validators，在之前和当前的epoch
 //! - Caching the total balances of:
+//! - 缓存total balances：
 //!   - All active validators.
+//!   - 所有的active validators
 //!   - All active validators matching each of the three "timely" flags.
+//!   - 所有的active validators匹配三个"timely" flags中的每一个
 //! - Caching the "eligible" validators.
+//! - 缓存"合格的" validators
 //!
 //! Additionally, this cache is returned from the `altair::process_epoch` function and can be used
 //! to get useful summaries about the validator participation in an epoch.
+//! 另外，这个cache从`altair::process_epoch`函数返回，并且可以用来获取有用的关于validator参与的epoch的总结
 
 use safe_arith::{ArithError, SafeArith};
 use types::{
@@ -27,8 +34,10 @@ pub enum Error {
 }
 
 /// A balance which will never be below the specified `minimum`.
+/// 一个balance，永远不会低于指定的`minimum`
 ///
 /// This is an effort to ensure the `EFFECTIVE_BALANCE_INCREMENT` minimum is always respected.
+/// 这是一个努力，确保`EFFECTIVE_BALANCE_INCREMENT`的最小值总是被尊重的
 #[derive(PartialEq, Debug, Clone, Copy)]
 struct Balance {
     raw: u64,
@@ -37,16 +46,19 @@ struct Balance {
 
 impl Balance {
     /// Initialize the balance to `0`, or the given `minimum`.
+    /// 初始化balance为`0`，或者给定的`minimum`
     pub fn zero(minimum: u64) -> Self {
         Self { raw: 0, minimum }
     }
 
     /// Returns the balance with respect to the initialization `minimum`.
+    /// 返回balance，关于初始化的`minimum`
     pub fn get(&self) -> u64 {
         std::cmp::max(self.raw, self.minimum)
     }
 
     /// Add-assign to the balance.
+    /// 增加balance
     pub fn safe_add_assign(&mut self, other: u64) -> Result<(), ArithError> {
         self.raw.safe_add_assign(other)
     }
@@ -123,6 +135,7 @@ impl SingleEpochParticipationCache {
 
     /// Process an **active** validator, reading from the `state` with respect to the
     /// `relative_epoch`.
+    /// 处理一个**active**的validator，从`state`中读取，关于`relative_epoch`
     ///
     /// ## Errors
     ///
@@ -140,6 +153,7 @@ impl SingleEpochParticipationCache {
         let validator = state.get_validator(val_index)?;
 
         // Sanity check to ensure the validator is active.
+        // 确保validator是active的
         let epoch = relative_epoch.into_epoch(current_epoch);
         if !validator.is_active_at(epoch) {
             return Err(BeaconStateError::ValidatorIsInactive { val_index });
@@ -154,14 +168,17 @@ impl SingleEpochParticipationCache {
         .ok_or(BeaconStateError::ParticipationOutOfBounds(val_index))?;
 
         // All active validators increase the total active balance.
+        // 所有的active validators增加total active balance
         self.total_active_balance.safe_add_assign(val_balance)?;
 
         // Only unslashed validators may proceed.
+        // 只有unslashed validators可以继续
         if validator.slashed {
             return Ok(());
         }
 
         // Add their `ParticipationFlags` to the map.
+        // 添加他们的`ParticipationFlags`到map中
         *self
             .unslashed_participating_indices
             .get_mut(val_index)
@@ -169,6 +186,7 @@ impl SingleEpochParticipationCache {
 
         // Iterate through all the flags and increment the total flag balances for whichever flags
         // are set for `val_index`.
+        // 迭代所有的flags，增加total flag balances，对于哪个flags被设置为`val_index`
         for (flag, balance) in self.total_flag_balances.iter_mut().enumerate() {
             if epoch_participation.has_flag(flag)? {
                 balance.safe_add_assign(val_balance)?;
@@ -183,10 +201,12 @@ impl SingleEpochParticipationCache {
 /// 维护一个cache，在`altair::process_epoch`使用
 #[derive(PartialEq, Debug)]
 pub struct ParticipationCache {
+    // 当前epoch的值
     current_epoch: Epoch,
     /// Caches information about active validators pertaining to `self.current_epoch`.
     /// 缓存信息关于active validators，关于`self.current_epoch`
     current_epoch_participation: SingleEpochParticipationCache,
+    // 上一个epoch的值
     previous_epoch: Epoch,
     /// Caches information about active validators pertaining to `self.previous_epoch`.
     /// 缓存信息关于active validators，关于`self.previous_epoch`
@@ -198,10 +218,12 @@ pub struct ParticipationCache {
 
 impl ParticipationCache {
     /// Instantiate `Self`, returning a fully initialized cache.
+    /// 实例化`Self`，返回一个完全初始化的cache
     ///
     /// ## Errors
     ///
     /// - The provided `state` **must** be an Altair state. An error will be returned otherwise.
+    /// - 提供的`state`**必须**是一个Altair state，否则会返回一个error 
     pub fn new<T: EthSpec>(
         state: &BeaconState<T>,
         spec: &ChainSpec,
@@ -211,26 +233,35 @@ impl ParticipationCache {
 
         // Both the current/previous epoch participations are set to a capacity that is slightly
         // larger than required. The difference will be due slashed-but-active validators.
+        // current/previous epoch participations都会设置为一个比要求的稍微大一点的容量，差异会由slashed-but-active validators引起
         let mut current_epoch_participation = SingleEpochParticipationCache::new(state, spec);
         let mut previous_epoch_participation = SingleEpochParticipationCache::new(state, spec);
         // Contains the set of validators which are either:
+        // 包含一组validators，他们是：
         //
         // - Active in the previous epoch.
+        // - 在上一个epoch是active的
         // - Slashed, but not yet withdrawable.
+        // - 已经slashed，但是还没有withdrawable
         //
         // Using the full length of `state.validators` is almost always overkill, but it ensures no
         // reallocations.
+        // 使用`state.validators`的完整长度几乎总是过度的，但是它确保没有重新分配
         let mut eligible_indices = Vec::with_capacity(state.validators().len());
 
         // Iterate through all validators, updating:
+        // 遍历所有的validators，更新：
         //
         // 1. Validator participation for current and previous epochs.
+        // 1. 对于当前和上一个epoch的validator participation
         // 2. The "eligible indices".
+        // 2. 那个"合格的指数"
         //
         // Care is taken to ensure that the ordering of `eligible_indices` is the same as the
         // `get_eligible_validator_indices` function in the spec.
         for (val_index, val) in state.validators().iter().enumerate() {
             if val.is_active_at(current_epoch) {
+                // 当前epoch是active的
                 current_epoch_participation.process_active_validator(
                     val_index,
                     state,
@@ -240,6 +271,7 @@ impl ParticipationCache {
             }
 
             if val.is_active_at(previous_epoch) {
+                // 在之前epoch是active的
                 previous_epoch_participation.process_active_validator(
                     val_index,
                     state,
@@ -250,6 +282,7 @@ impl ParticipationCache {
 
             // Note: a validator might still be "eligible" whilst returning `false` to
             // `Validator::is_active_at`.
+            // 注意：一个validator可能仍然是"合格的"，当返回`false`到`Validator::is_active_at`的时候
             if state.is_eligible_validator(previous_epoch, val_index)? {
                 eligible_indices.push(val_index)
             }
@@ -270,12 +303,14 @@ impl ParticipationCache {
     }
 
     /// Equivalent to the `get_unslashed_participating_indices` function in the specification.
+    /// 相当于规范中的`get_unslashed_participating_indices`函数
     pub fn get_unslashed_participating_indices(
         &self,
         flag_index: usize,
         epoch: Epoch,
     ) -> Result<UnslashedParticipatingIndices, BeaconStateError> {
         let participation = if epoch == self.current_epoch {
+            // 根据epoch返回对应的epoch participation
             &self.current_epoch_participation
         } else if epoch == self.previous_epoch {
             &self.previous_epoch_participation
@@ -407,10 +442,12 @@ impl<'a> UnslashedParticipatingIndices<'a> {
     }
 
     /// Returns the sum of all balances of validators which have `self.flag_index` set.
+    /// 返回所有的validators的balances的总和，他们有`self.flag_index`被设置
     ///
     /// ## Notes
     ///
     /// Respects the `EFFECTIVE_BALANCE_INCREMENT` minimum.
+    /// 尊重`EFFECTIVE_BALANCE_INCREMENT`的最小值
     pub fn total_balance(&self) -> Result<u64, Error> {
         self.participation
             .total_flag_balances

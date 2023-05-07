@@ -11,10 +11,13 @@ use types::{
 #[derive(Debug)]
 pub struct ConsensusContext<T: EthSpec> {
     /// Slot to act as an identifier/safeguard
+    /// Slot作为一个标识符/保障
     slot: Slot,
     /// Proposer index of the block at `slot`.
+    /// 在`slot`的block的proposer index
     proposer_index: Option<u64>,
     /// Block root of the block at `slot`.
+    /// 在`slot`的block的block root
     current_block_root: Option<Hash256>,
     /// Cache of indexed attestations constructed during block processing.
     /// 缓存的indexed attestations，在block处理期间构建
@@ -53,10 +56,12 @@ impl<T: EthSpec> ConsensusContext<T> {
     }
 
     /// Strict method for fetching the proposer index.
+    /// 严格的方法用于获取proposer index
     ///
     /// Gets the proposer index for `self.slot` while ensuring that it matches `state.slot()`. This
     /// method should be used in block processing and almost everywhere the proposer index is
     /// required. If the slot check is too restrictive, see `get_proposer_index_from_epoch_state`.
+    /// 为`self.slot`获取proposer index，同时确保它与`state.slot()`匹配。这个方法应该在block处理中使用，几乎在需要proposer index的任何地方都可以使用。如果slot检查太严格，请参见`get_proposer_index_from_epoch_state`。
     pub fn get_proposer_index(
         &mut self,
         state: &BeaconState<T>,

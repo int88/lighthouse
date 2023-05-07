@@ -26,14 +26,18 @@ pub struct VoteTracker {
 }
 
 /// Represents the verification status of an execution payload.
+/// 代表一个执行负载的验证状态。
 #[derive(Clone, Copy, Debug, PartialEq, Encode, Decode, Serialize, Deserialize)]
 #[ssz(enum_behaviour = "union")]
 pub enum ExecutionStatus {
     /// An EL has determined that the payload is valid.
+    /// 一个EL已经确定了有效的负载。
     Valid(ExecutionBlockHash),
     /// An EL has determined that the payload is invalid.
+    /// 一个EL已经确定了无效的负载。
     Invalid(ExecutionBlockHash),
     /// An EL has not yet verified the execution payload.
+    /// 一个EL还没有验证执行负载。
     Optimistic(ExecutionBlockHash),
     /// The block is either prior to the merge fork, or after the merge fork but before the terminal
     /// PoW block has been found.
@@ -126,8 +130,10 @@ impl ExecutionStatus {
 }
 
 /// A block that is to be applied to the fork choice.
+/// 一个block，将被应用到fork choice中。
 ///
 /// A simplified version of `types::BeaconBlock`.
+/// 是types::BeaconBlock的简化版本。
 #[derive(Clone, Debug, PartialEq)]
 pub struct Block {
     pub slot: Slot,
@@ -141,6 +147,7 @@ pub struct Block {
     pub finalized_checkpoint: Checkpoint,
     /// Indicates if an execution node has marked this block as valid. Also contains the execution
     /// block hash.
+    /// 表示一个执行节点是否将此块标记为有效。还包含执行块哈希。
     pub execution_status: ExecutionStatus,
     pub unrealized_justified_checkpoint: Option<Checkpoint>,
     pub unrealized_finalized_checkpoint: Option<Checkpoint>,

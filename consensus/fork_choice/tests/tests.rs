@@ -34,6 +34,7 @@ pub enum MutationDelay {
 }
 
 /// A helper struct to make testing fork choice more ergonomic and less repetitive.
+/// 一个helper结构，使测试fork choice更符合人体工程学，更少的重复。
 struct ForkChoiceTest {
     harness: BeaconChainHarness<EphemeralHarnessType<E>>,
 }
@@ -47,6 +48,7 @@ impl fmt::Debug for ForkChoiceTest {
 
 impl ForkChoiceTest {
     /// Creates a new tester.
+    /// 创建一个新的tester
     pub fn new() -> Self {
         let harness = BeaconChainHarness::builder(MainnetEthSpec)
             .default_spec()
@@ -168,6 +170,7 @@ impl ForkChoiceTest {
     }
 
     /// Build the chain whilst `predicate` returns `true` and `process_block_result` does not error.
+    /// 构建chain，同时`predicate`返回`true`，`process_block_result`不会出错。
     pub async fn apply_blocks_while<F>(self, mut predicate: F) -> Result<Self, Self>
     where
         F: FnMut(BeaconBlockRef<'_, E>, &BeaconState<E>) -> bool,
@@ -183,6 +186,7 @@ impl ForkChoiceTest {
                 break;
             }
             if let Ok(block_hash) = self.harness.process_block_result(block.clone()).await {
+                // 对block进行attestation
                 self.harness.attest_block(
                     &state,
                     block.state_root(),
@@ -504,7 +508,9 @@ fn justified_and_finalized_blocks() {
 }
 
 /// - The new justified checkpoint descends from the current.
+/// - 新的justified checkpoint从当前的justified checkpoint下降。
 /// - Current slot is within `SAFE_SLOTS_TO_UPDATE_JUSTIFIED`
+/// - 当前的slot在`SAFE_SLOTS_TO_UPDATE_JUSTIFIED`中
 #[tokio::test]
 async fn justified_checkpoint_updates_with_descendent_inside_safe_slots() {
     ForkChoiceTest::new()
@@ -519,6 +525,7 @@ async fn justified_checkpoint_updates_with_descendent_inside_safe_slots() {
 }
 
 /// - The new justified checkpoint descends from the current.
+/// - 新的justified checkpoint从当前的justified checkpoint下降。
 /// - Current slot is **not** within `SAFE_SLOTS_TO_UPDATE_JUSTIFIED`
 /// - This is **not** the first justification since genesis
 #[tokio::test]
@@ -551,8 +558,11 @@ async fn justified_checkpoint_updates_first_justification_outside_safe_to_update
 }
 
 /// - The new justified checkpoint **does not** descend from the current.
+/// - 新的justified checkpoint **不是**从当前的justified checkpoint下降。
 /// - Current slot is within `SAFE_SLOTS_TO_UPDATE_JUSTIFIED`
+/// - 当前的slot在`SAFE_SLOTS_TO_UPDATE_JUSTIFIED`中
 /// - Finalized epoch has **not** increased.
+/// - Finalized epoch没有增加。
 #[tokio::test]
 async fn justified_checkpoint_updates_with_non_descendent_inside_safe_slots_without_finality() {
     ForkChoiceTest::new()

@@ -138,10 +138,13 @@ pub enum InvalidAttestation {
     UnknownHeadBlock { beacon_block_root: Hash256 },
     /// The `attestation.data.slot` is not from the same epoch as `data.target.epoch` and therefore
     /// the attestation is invalid.
+    /// `attestation.data.slot`不是和`data.target.epoch`来自同一个epoch，因此attestation是无效的
     BadTargetEpoch { target: Epoch, slot: Slot },
     /// The target root of the attestation points to a block that we have not verified.
+    /// attestations指向的target root指向了一个我们没有验证的block
     UnknownTargetRoot(Hash256),
     /// The attestation is for an epoch in the future (with respect to the gossip clock disparity).
+    /// attestation是未来的epoch（相对于gossip clock disparity）
     FutureEpoch {
         attestation_epoch: Epoch,
         current_epoch: Epoch,
@@ -153,12 +156,14 @@ pub enum InvalidAttestation {
     },
     /// The attestation references a target root that does not match what is stored in our
     /// database.
+    /// attestation引用一个target root，这个target root和我们数据库中存储的不匹配
     InvalidTarget {
         attestation: Hash256,
         local: Hash256,
     },
     /// The attestation is attesting to a state that is later than itself. (Viz., attesting to the
     /// future).
+    /// 这个attestation是attesting到一个比它自己更晚的state（比如attesting到未来）
     AttestsToFutureBlock { block: Slot, attestation: Slot },
 }
 
@@ -239,6 +244,7 @@ fn compute_start_slot_at_epoch<E: EthSpec>(epoch: Epoch) -> Slot {
 
 /// Used for queuing attestations from the current slot. Only contains the minimum necessary
 /// information about the attestation.
+/// 用于排队当前slot的attestations，只包含关于attestation的最小必要信息
 #[derive(Clone, PartialEq, Encode, Decode)]
 pub struct QueuedAttestation {
     slot: Slot,
@@ -301,25 +307,34 @@ pub struct ForkChoiceView {
 }
 
 /// Provides an implementation of "Ethereum 2.0 Phase 0 -- Beacon Chain Fork Choice":
+/// 提供一个"Ethereum 2.0 Phase 0 -- Beacon Chain Fork Choice"的实现
 ///
 /// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#ethereum-20-phase-0----beacon-chain-fork-choice
 ///
 /// ## Detail
 ///
 /// This struct wraps `ProtoArrayForkChoice` and provides:
+/// 这个结构封装`ProtoArrayForkChoice`并提供：
 ///
 /// - Management of the justified state and caching of balances.
+/// - 对于justified state的管理和balances的缓存
 /// - Queuing of attestations from the current slot.
+/// - 从当前的slot开始对于attestations的排队
 pub struct ForkChoice<T, E> {
     /// Storage for `ForkChoice`, modelled off the spec `Store` object.
+    /// 存储`ForkChoice`，模仿了spec中的`Store`对象
     fc_store: T,
     /// The underlying representation of the block DAG.
+    /// block DAG的底层表示
     proto_array: ProtoArrayForkChoice,
     /// Attestations that arrived at the current slot and must be queued for later processing.
+    /// 在当前slot到来的attestations，并且必须排队等待后续处理
     queued_attestations: Vec<QueuedAttestation>,
     /// Stores a cache of the values required to be sent to the execution layer.
+    /// 存储的是需要发送到execution layer的值的缓存
     forkchoice_update_parameters: ForkchoiceUpdateParameters,
     /// The most recent result of running `Self::get_head`.
+    /// 运行`Self::get_head`的最近结果
     head_block_root: Hash256,
     _phantom: PhantomData<E>,
 }
@@ -428,10 +443,12 @@ where
 
     /// Returns the block root of an ancestor of `block_root` at the given `slot`. (Note: `slot` refers
     /// to the block that is *returned*, not the one that is supplied.)
+    /// 返回`block_root`的祖先的block root在给定的`slot`，（注意：`slot`指的是返回的block，而不是提供的block）
     ///
     /// The result may be `Ok(None)` if the block does not descend from the finalized block. This
     /// is an artifact of proto-array, sometimes it contains descendants of blocks that have been
     /// pruned.
+    /// 结果可能是`Ok(None)`，如果block不是从finalized block下降的，这是proto-array的一个副作用，有时它包含已经被修剪的block的后代
     ///
     /// ## Specification
     ///
@@ -472,6 +489,7 @@ where
     }
 
     /// Run the fork choice rule to determine the head.
+    /// 运行fork choice规则来确定head
     ///
     /// ## Specification
     ///
@@ -486,10 +504,12 @@ where
         // Provide the slot (as per the system clock) to the `fc_store` and then return its view of
         // the current slot. The `fc_store` will ensure that the `current_slot` is never
         // decreasing, a property which we must maintain.
+        // 提供slot（作为系统时钟）给`fc_store`，然后返回它对当前slot的视图，`fc_store`将确保`current_slot`永远不会减少，这是我们必须保持的属性
         let current_slot = self.update_time(system_time_current_slot)?;
 
         let store = &mut self.fc_store;
 
+        // 找到head root
         let head_root = self.proto_array.find_head::<E>(
             *store.justified_checkpoint(),
             *store.finalized_checkpoint(),
@@ -503,6 +523,7 @@ where
         self.head_block_root = head_root;
 
         // Cache some values for the next forkchoiceUpdate call to the execution layer.
+        // 缓存一些值，用于下一次forkchoiceUpdate调用到execution layer
         let head_hash = self
             .get_block(&head_root)
             .and_then(|b| b.execution_status.block_hash());
@@ -666,15 +687,19 @@ where
         let current_slot = self.update_time(system_time_current_slot)?;
 
         // Parent block must be known.
+        // Parent block必须已知
         let parent_block = self
             .proto_array
             .get_block(&block.parent_root())
+            // 如果为None则报错
             .ok_or_else(|| Error::InvalidBlock(InvalidBlock::UnknownParent(block.parent_root())))?;
 
         // Blocks cannot be in the future. If they are, their consideration must be delayed until
         // the are in the past.
+        // Blocks不能来自未来，如果是的话，他们的consideration必须被延迟直到他们在过去
         //
         // Note: presently, we do not delay consideration. We just drop the block.
+        // 注意：当前，我们不会延迟consideration，我们只是丢弃block
         if block.slot() > current_slot {
             return Err(Error::InvalidBlock(InvalidBlock::FutureSlot {
                 current_slot,
@@ -684,6 +709,7 @@ where
 
         // Check that block is later than the finalized epoch slot (optimization to reduce calls to
         // get_ancestor).
+        // 检查block晚于finalized epoch slot（优化减少调用get_ancestor）
         let finalized_slot =
             compute_start_slot_at_epoch::<E>(self.fc_store.finalized_checkpoint().epoch);
         if block.slot() <= finalized_slot {
@@ -694,6 +720,7 @@ where
         }
 
         // Check block is a descendant of the finalized block at the checkpoint finalized slot.
+        // 检查block是在checkpoint finalized slot的finalized block的后代
         //
         // Note: the specification uses `hash_tree_root(block)` instead of `block.parent_root` for
         // the start of this search. I claim that since `block.slot > finalized_slot` it is
@@ -712,6 +739,7 @@ where
         }
 
         // Add proposer score boost if the block is timely.
+        // 添加proposer score boost如果block是及时的
         let is_before_attesting_interval =
             block_delay < Duration::from_secs(spec.seconds_per_slot / INTERVALS_PER_SLOT);
         if current_slot == block.slot() && is_before_attesting_interval {
@@ -719,12 +747,14 @@ where
         }
 
         // Update store with checkpoints if necessary
+        // 用checkpoint更新store，如果有必要的话
         self.update_checkpoints(
             state.current_justified_checkpoint(),
             state.finalized_checkpoint(),
         )?;
 
         // Update unrealized justified/finalized checkpoints.
+        // 更新unrealized justified/finalized checkpoints
         let (unrealized_justified_checkpoint, unrealized_finalized_checkpoint) = if count_unrealized
             .is_true()
         {
@@ -787,6 +817,7 @@ where
                 };
 
             // Update best known unrealized justified & finalized checkpoints
+            // 更新best known unrealized justified & finalized checkpoints
             if unrealized_justified_checkpoint.epoch
                 > self.fc_store.unrealized_justified_checkpoint().epoch
             {
@@ -801,6 +832,7 @@ where
             }
 
             // If block is from past epochs, try to update store's justified & finalized checkpoints right away
+            // 如果block是来自过去的epochs，尝试立即更新store的justified & finalized checkpoints
             if block.slot().epoch(E::slots_per_epoch()) < current_slot.epoch(E::slots_per_epoch()) {
                 self.pull_up_store_checkpoints(
                     unrealized_justified_checkpoint,
@@ -820,6 +852,7 @@ where
             .slot()
             .epoch(E::slots_per_epoch())
             .start_slot(E::slots_per_epoch());
+        // 获取block所在的epoch的起始slot对应的block root
         let target_root = if block.slot() == target_slot {
             block_root
         } else {
@@ -858,11 +891,13 @@ where
             }
         } else {
             // There is no payload to verify.
+            // 没有payload需要校验
             ExecutionStatus::irrelevant()
         };
 
         // This does not apply a vote to the block, it just makes fork choice aware of the block so
         // it can still be identified as the head even if it doesn't have any votes.
+        // 这不会对block应用投票，它只是让fork choice意识到block，这样即使它没有任何投票，它也可以被识别为head
         self.proto_array.process_block::<E>(
             ProtoBlock {
                 slot: block.slot(),
@@ -895,12 +930,14 @@ where
     }
 
     /// Update checkpoints in store if necessary
+    /// 更新store中的checkpoints，如果有必要的话
     fn update_checkpoints(
         &mut self,
         justified_checkpoint: Checkpoint,
         finalized_checkpoint: Checkpoint,
     ) -> Result<(), Error<T::Error>> {
         // Update justified checkpoint.
+        // 更新justified checkpoint
         if justified_checkpoint.epoch > self.fc_store.justified_checkpoint().epoch {
             self.fc_store
                 .set_justified_checkpoint(justified_checkpoint)
@@ -908,6 +945,7 @@ where
         }
 
         // Update finalized checkpoint.
+        // 更新finalized checkpoint
         if finalized_checkpoint.epoch > self.fc_store.finalized_checkpoint().epoch {
             self.fc_store.set_finalized_checkpoint(finalized_checkpoint);
         }
@@ -1043,11 +1081,13 @@ where
     /// It only approximates the specification since it does not perform
     /// `is_valid_indexed_attestation` since that should already have been called upstream and it's
     /// too expensive to call again.
+    /// 它只是近似了实现，因为它不执行`is_valid_indexed_attestation`，因为它应该在upstream被调用并且再调用一次太昂贵了
     ///
     /// ## Notes:
     ///
     /// The supplied `attestation` **must** pass the `in_valid_indexed_attestation` function as it
     /// will not be run here.
+    /// 提供的`attestation`必须通过了`in_valid_indexed_attestation`函数，因为它不在这里运行
     pub fn on_attestation(
         &mut self,
         system_time_current_slot: Slot,
@@ -1057,9 +1097,11 @@ where
         self.update_time(system_time_current_slot)?;
 
         // Ignore any attestations to the zero hash.
+        // 忽略任何对zero hash的attestations
         //
         // This is an edge case that results from the spec aliasing the zero hash to the genesis
         // block. Attesters may attest to the zero hash if they have never seen a block.
+        // 这是一个边界条件，它是由于spec将zero hash与genesis block进行了别名处理，如果attesters从未看到过block，他们可以attest to the zero hash
         //
         // We have two options here:
         //
@@ -1077,6 +1119,7 @@ where
 
         if attestation.data.slot < self.fc_store.get_current_slot() {
             for validator_index in attestation.attesting_indices.iter() {
+                // 让proto_array处理attestations
                 self.proto_array.process_attestation(
                     *validator_index as usize,
                     attestation.data.beacon_block_root,
@@ -1089,6 +1132,7 @@ where
             // ```
             // Attestations can only affect the fork choice of subsequent slots.
             // Delay consideration in the fork choice until their slot is in the past.
+            // Attestations只能影响后续slots的fork choice，延迟考虑fork choice直到他们的slot在过去
             // ```
             self.queued_attestations
                 .push(QueuedAttestation::from(attestation));
@@ -1130,6 +1174,7 @@ where
     }
 
     /// Called whenever the current time increases.
+    /// 当current time增加时调用
     ///
     /// ## Specification
     ///
@@ -1148,16 +1193,19 @@ where
         }
 
         // Update store time.
+        // 更新store time
         store.set_current_slot(time);
 
         let current_slot = store.get_current_slot();
 
         // Reset proposer boost if this is a new slot.
+        // 重置proposer boost，如果有一个新的slot
         if current_slot > previous_slot {
             store.set_proposer_boost_root(Hash256::zero());
         }
 
         // Not a new epoch, return.
+        // 不是一个新的epoch，返回
         if !(current_slot > previous_slot
             && compute_slots_since_epoch_start::<E>(current_slot) == 0)
         {
@@ -1166,6 +1214,7 @@ where
 
         // Update the justified/finalized checkpoints based upon the
         // best-observed unrealized justification/finality.
+        // 更新justified/finalized checkpoints基于best-observed unrealized justification/finality
         let unrealized_justified_checkpoint = *self.fc_store.unrealized_justified_checkpoint();
         let unrealized_finalized_checkpoint = *self.fc_store.unrealized_finalized_checkpoint();
         self.pull_up_store_checkpoints(
@@ -1189,6 +1238,7 @@ where
 
     /// Processes and removes from the queue any queued attestations which may now be eligible for
     /// processing due to the slot clock incrementing.
+    /// 处理并且从队列中移除任何queued attestations，这些queued attestations现在可能由于slot clock增加而有资格进行处理
     fn process_attestation_queue(&mut self) -> Result<(), Error<T::Error>> {
         for attestation in dequeue_attestations(
             self.fc_store.get_current_slot(),

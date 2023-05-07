@@ -300,8 +300,10 @@ impl ProtoArray {
     }
 
     /// Register a block with the fork choice.
+    /// 注册一个block到fork choice
     ///
     /// It is only sane to supply a `None` parent for the genesis block.
+    /// 这只是一个理智的选择，为genesis block提供一个`None`的parent
     pub fn on_block<E: EthSpec>(&mut self, block: Block, current_slot: Slot) -> Result<(), Error> {
         // If the block is already known, simply ignore it.
         if self.indices.contains_key(&block.root) {
@@ -332,6 +334,7 @@ impl ProtoArray {
 
         // If the parent has an invalid execution status, return an error before adding the block to
         // `self`.
+        // 如果parent有一个无效的执行状态，在将block添加到`self`之前返回一个错误。
         if let Some(parent_index) = node.parent {
             let parent = self
                 .nodes
