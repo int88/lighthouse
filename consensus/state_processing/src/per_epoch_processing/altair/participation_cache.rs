@@ -425,8 +425,10 @@ impl ParticipationCache {
 
 /// Imitates the return value of the `get_unslashed_participating_indices` in the
 /// specification.
+/// 模仿规范中的`get_unslashed_participating_indices`的返回值
 ///
 /// This struct exists to help make the Lighthouse code read more like the specification.
+/// 这个结构让Lighthouse的代码更像规范
 pub struct UnslashedParticipatingIndices<'a> {
     participation: &'a SingleEpochParticipationCache,
     flag_index: usize,

@@ -141,6 +141,7 @@ pub const ETH1_CACHE_DB_KEY: Hash256 = Hash256::zero();
 pub const FORK_CHOICE_DB_KEY: Hash256 = Hash256::zero();
 
 /// Defines how old a block can be before it's no longer a candidate for the early attester cache.
+/// 定义一个block可以多旧才不再是early attester cache的候选者
 const EARLY_ATTESTER_CACHE_HISTORIC_SLOTS: u64 = 4;
 
 /// Defines a distance between the head block slot and the current slot.
@@ -419,6 +420,7 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// A cache used when producing attestations.
     pub(crate) attester_cache: Arc<AttesterCache>,
     /// A cache used when producing attestations whilst the head block is still being imported.
+    /// 在生成attestations的时候，当head block还在被import的时候，使用的cache
     pub early_attester_cache: EarlyAttesterCache<T::EthSpec>,
     /// A cache used to keep track of various block timings.
     pub block_times_cache: Arc<RwLock<BlockTimesCache>>,
@@ -2825,6 +2827,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Everything in this initial section is on the hot path between processing the block and
         // being able to attest to it. DO NOT add any extra processing in this initial section
         // unless it must run before fork choice.
+        // 在这个初始的section中的所有东西都是在处理block和能够attest之间的热路径上，不要在这个初始的section中
+        // 添加任何额外的处理，除非它必须在fork choice之前运行
         // -----------------------------------------------------------------------------------------
         let current_slot = self.slot()?;
         let current_epoch = current_slot.epoch(T::EthSpec::slots_per_epoch());
@@ -2832,6 +2836,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let post_exec_timer = metrics::start_timer(&metrics::BLOCK_PROCESSING_POST_EXEC_PROCESSING);
 
         // Check against weak subjectivity checkpoint.
+        // 检查weak subjectivity checkpoint
         self.check_block_against_weak_subjectivity_checkpoint(block, block_root, &state)?;
 
         // If there are new validators in this block, update our pubkey cache.
@@ -2869,9 +2874,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let mut fork_choice = self.canonical_head.fork_choice_write_lock();
 
         // Do not import a block that doesn't descend from the finalized root.
+        // 不要导入一个不是从finalized root下降的block
         check_block_is_finalized_checkpoint_or_descendant(self, &fork_choice, &signed_block)?;
 
         // Register the new block with the fork choice service.
+        // 注册新的block到fork choice service
         {
             let _fork_choice_block_timer =
                 metrics::start_timer(&metrics::FORK_CHOICE_PROCESS_BLOCK_TIMES);
@@ -2903,18 +2910,23 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         //
         // Only performing this check on recent blocks avoids slowing down sync with lots of calls
         // to fork choice `get_head`.
+        // 只执行这种检查，对于最近的blocks，避免了用大量的fork choice `get_head`调用来减慢sync
         //
         // Optimistically imported blocks are not added to the cache since the cache is only useful
         // for a small window of time and the complexity of keeping track of the optimistic status
         // is not worth it.
+        // 乐观地导入blocks没有被添加到cache，因为cache只有在一个小的时间窗口内是有用的，并且乐观地状态
+        // 的复杂性是不值得的
         if !payload_verification_status.is_optimistic()
             && block.slot() + EARLY_ATTESTER_CACHE_HISTORIC_SLOTS >= current_slot
         {
             let fork_choice_timer = metrics::start_timer(&metrics::BLOCK_PROCESSING_FORK_CHOICE);
             match fork_choice.get_head(current_slot, &self.spec) {
                 // This block became the head, add it to the early attester cache.
+                // 这个block变成了head，添加它到early attester cache
                 Ok(new_head_root) if new_head_root == block_root => {
                     if let Some(proto_block) = fork_choice.get_block(&block_root) {
+                        // 添加head block
                         if let Err(e) = self.early_attester_cache.add_head_block(
                             block_root,
                             signed_block.clone(),
@@ -2937,6 +2949,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     }
                 }
                 // This block did not become the head, nothing to do.
+                // 这个block没有变成head，什么都不做
                 Ok(_) => (),
                 Err(e) => error!(
                     self.log,
@@ -3004,6 +3017,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
             // Clear the early attester cache to prevent attestations which we would later be unable
             // to verify due to the failure.
+            // 清理early attester cache，防止attestations，我们之后无法校验，因为失败
             self.early_attester_cache.clear();
 
             // Since the write failed, try to revert the canonical head back to what was stored
@@ -3033,6 +3047,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // The fork choice write-lock is dropped *after* the on-disk database has been updated.
         // This prevents inconsistency between the two at the expense of concurrency.
+        // fork choice write-lock别丢弃，直到on-disk database已经被更新，这防止了两者之间的不一致，以并发为代价
         drop(fork_choice);
 
         // We're declaring the block "imported" at this point, since fork choice and the DB know
@@ -3107,6 +3122,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Check block's consistentency with any configured weak subjectivity checkpoint.
+    /// 检查block和任何配置的weak subjectivity checkpoint的一致性
     fn check_block_against_weak_subjectivity_checkpoint(
         &self,
         block: BeaconBlockRef<T::EthSpec>,
@@ -4194,6 +4210,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Produce a block for some `slot` upon the given `state`.
+    /// 生成一个block，对于一些`slot`以及给定的`state`
     ///
     /// Typically the `self.produce_block()` function should be used, instead of calling this
     /// function directly. This function is useful for purposefully creating forks or blocks at

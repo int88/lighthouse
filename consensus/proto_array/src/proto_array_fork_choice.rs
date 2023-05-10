@@ -331,6 +331,7 @@ impl ProtoArrayForkChoice {
             state_root: finalized_block_state_root,
             // We are using the finalized_root as the target_root, since it always lies on an
             // epoch boundary.
+            // 我们使用finalized root作为target root，因为它总是位于一个epoch边界上。
             target_root: finalized_checkpoint.root,
             current_epoch_shuffling_id,
             next_epoch_shuffling_id,

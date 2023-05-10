@@ -53,21 +53,26 @@ pub trait ForkChoiceStore<T: EthSpec>: Sized {
     fn justified_balances(&self) -> &JustifiedBalances;
 
     /// Returns the `finalized_checkpoint`.
+    /// 返回`finalized_checkpoint`
     fn finalized_checkpoint(&self) -> &Checkpoint;
 
     /// Returns the `unrealized_justified_checkpoint`.
+    /// 返回`unrealized_justified_checkpoint`
     fn unrealized_justified_checkpoint(&self) -> &Checkpoint;
 
     /// Returns the `unrealized_finalized_checkpoint`.
+    /// 返回`unrealized_finalized_checkpoint`
     fn unrealized_finalized_checkpoint(&self) -> &Checkpoint;
 
     /// Returns the `proposer_boost_root`.
     fn proposer_boost_root(&self) -> Hash256;
 
     /// Sets `finalized_checkpoint`.
+    /// 设置`finalized_checkpoint`
     fn set_finalized_checkpoint(&mut self, checkpoint: Checkpoint);
 
     /// Sets the `justified_checkpoint`.
+    /// 设置`justified_checkpoint`
     fn set_justified_checkpoint(&mut self, checkpoint: Checkpoint) -> Result<(), Self::Error>;
 
     /// Sets the `unrealized_justified_checkpoint`.

@@ -182,6 +182,7 @@ impl<T> From<proto_array::Error> for Error<T> {
 /// Indicates whether the unrealized justification of a block should be calculated and tracked.
 /// If a block has been finalized, this can be set to false. This is useful when syncing finalized
 /// portions of the chain. Otherwise this should always be set to true.
+/// 表示是否应该计算和跟踪block的unrealized justification，如果一个block已经被finalized，这个值可以设置为false，当同步finalized chain的部分时，这是有用的，否则这个值应该总是设置为true
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CountUnrealized {
     True,
@@ -357,6 +358,7 @@ where
     E: EthSpec,
 {
     /// Instantiates `Self` from an anchor (genesis or another finalized checkpoint).
+    /// 从一个anchor（genesis或者另一个finalized checkpoint）实例化`Self`
     pub fn from_anchor(
         fc_store: T,
         anchor_block_root: Hash256,
@@ -546,6 +548,7 @@ where
     }
 
     /// Get the block to build on as proposer, taking into account proposer re-orgs.
+    /// 获取block作为proposer，考虑到proposer re-orgs
     ///
     /// You *must* call `get_head` for the proposal slot prior to calling this function and pass
     /// in the result of `get_head` as `canonical_head`.
@@ -761,12 +764,17 @@ where
             let block_epoch = block.slot().epoch(E::slots_per_epoch());
 
             // If the parent checkpoints are already at the same epoch as the block being imported,
+            // 如果parent checkpoints已经和被导入的block在一个epoch
             // it's impossible for the unrealized checkpoints to differ from the parent's. This
             // holds true because:
+            // unrealized checkpoints不可能和parent的不同，这是因为：
             //
             // 1. A child block cannot have lower FFG checkpoints than its parent.
+            // 1. 一个child block不能有比它的parent更低的FFG checkpoints
             // 2. A block in epoch `N` cannot contain attestations which would justify an epoch higher than `N`.
+            // 2. 一个在epoch `N`的block不能包含attestations，这些attestations会justify一个epoch高于`N`
             // 3. A block in epoch `N` cannot contain attestations which would finalize an epoch higher than `N - 1`.
+            // 3. 一个blokc在epoch `N`不能包含attestations，这些attestations会finalize一个epoch高于`N - 1`
             //
             // This is an optimization. It should reduce the amount of times we run
             // `process_justification_and_finalization` by approximately 1/3rd when the chain is
@@ -787,9 +795,11 @@ where
                         BeaconBlockRef::Capella(_)
                         | BeaconBlockRef::Merge(_)
                         | BeaconBlockRef::Altair(_) => {
+                            // 构建一个pariticipation cache
                             let participation_cache =
                                 per_epoch_processing::altair::ParticipationCache::new(state, spec)
                                     .map_err(Error::ParticipationCacheBuild)?;
+                            // 处理finalization和justification
                             per_epoch_processing::altair::process_justification_and_finalization(
                                 state,
                                 &participation_cache,
@@ -822,12 +832,14 @@ where
                 > self.fc_store.unrealized_justified_checkpoint().epoch
             {
                 self.fc_store
+                    // 更新unrealized_justified_checkpoint
                     .set_unrealized_justified_checkpoint(unrealized_justified_checkpoint);
             }
             if unrealized_finalized_checkpoint.epoch
                 > self.fc_store.unrealized_finalized_checkpoint().epoch
             {
                 self.fc_store
+                    // 更新unrealized_finalized_checkpoint
                     .set_unrealized_finalized_checkpoint(unrealized_finalized_checkpoint);
             }
 

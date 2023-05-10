@@ -1,8 +1,10 @@
 //! Defines the `BeaconForkChoiceStore` which provides the persistent storage for the `ForkChoice`
 //! struct.
+//! 定义了`BeaconForkChoiceStore`，它为`ForkChoice`结构提供了持久存储。
 //!
 //! Additionally, the `BalancesCache` struct is defined; a cache designed to avoid database
 //! reads when fork choice requires the validator balances of the justified state.
+//! 另外，定义了`BalancesCache`结构；这是一个缓存，旨在避免数据库读取，当分叉选择需要合理状态的验证者余额时。
 
 use crate::{metrics, BeaconSnapshot};
 use derivative::Derivative;
@@ -166,6 +168,7 @@ where
     Cold: ItemStore<E>,
 {
     /// Initialize `Self` from some `anchor` checkpoint which may or may not be the genesis state.
+    /// 从`anchor` checkpoint初始化`Self`，它可能是genesis state。
     ///
     /// ## Specification
     ///
