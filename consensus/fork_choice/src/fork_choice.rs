@@ -655,7 +655,9 @@ where
     /// 添加`block`到fork choice DAG
     ///
     /// - `block_root` is the root of `block.
+    /// - `block_root`是`block`的root
     /// - The root of `state` matches `block.state_root`.
+    /// - `state`的root和`block.state_root`匹配
     ///
     /// ## Specification
     ///

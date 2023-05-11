@@ -140,8 +140,10 @@ impl SingleEpochParticipationCache {
     /// ## Errors
     ///
     /// - The provided `state` **must** be Altair. An error will be returned otherwise.
+    /// - 提供的`state`必须是Altair，否则会返回一个error
     /// - An error will be returned if the `val_index` validator is inactive at the given
     ///     `relative_epoch`.
+    /// - 如果`val_index` validator在给定的`relative_epoch`是inactive的，会返回一个error
     fn process_active_validator<T: EthSpec>(
         &mut self,
         val_index: usize,
@@ -149,6 +151,7 @@ impl SingleEpochParticipationCache {
         current_epoch: Epoch,
         relative_epoch: RelativeEpoch,
     ) -> Result<(), BeaconStateError> {
+        // 根据index返回val_balance和validator的值
         let val_balance = state.get_effective_balance(val_index)?;
         let validator = state.get_validator(val_index)?;
 
@@ -160,6 +163,7 @@ impl SingleEpochParticipationCache {
         }
 
         let epoch_participation = match relative_epoch {
+            // 根据relative_epoch返回对应的epoch participation
             RelativeEpoch::Current => state.current_epoch_participation(),
             RelativeEpoch::Previous => state.previous_epoch_participation(),
             _ => Err(BeaconStateError::EpochOutOfBounds),
@@ -298,6 +302,7 @@ impl ParticipationCache {
     }
 
     /// Equivalent to the specification `get_eligible_validator_indices` function.
+    /// 和spec中的`get_eligible_validator_indices`函数相同
     pub fn eligible_validator_indices(&self) -> &[usize] {
         &self.eligible_indices
     }
