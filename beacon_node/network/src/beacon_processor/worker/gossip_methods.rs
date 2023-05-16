@@ -74,9 +74,12 @@ struct RejectedUnaggregate<T: EthSpec> {
 }
 
 /// An aggregate that has been validated by the `BeaconChain`.
+/// 一个aggreagete，已经被BeaconChain校验过了
 ///
 /// Since this struct implements `beacon_chain::VerifiedAttestation`, it would be a logic error to
 /// construct this from components which have not passed `BeaconChain` validation.
+/// 因为这个结构体实现了`beacon_chain::VerifiedAttestation`，所以构造这个结构体的时候
+/// 必须保证这个结构体的组件已经通过了`BeaconChain`的校验
 struct VerifiedAggregate<T: BeaconChainTypes> {
     signed_aggregate: Box<SignedAggregateAndProof<T::EthSpec>>,
     indexed_attestation: IndexedAttestation<T::EthSpec>,
@@ -102,6 +105,7 @@ impl<T: BeaconChainTypes> VerifiedAttestation<T> for VerifiedAggregate<T> {
 }
 
 /// An attestation that failed validation by the `BeaconChain`.
+/// 一个校验失败的attestation
 struct RejectedAggregate<T: EthSpec> {
     signed_aggregate: Box<SignedAggregateAndProof<T>>,
     error: AttnError,
@@ -446,12 +450,17 @@ impl<T: BeaconChainTypes> Worker<T> {
     }
 
     /// Process the aggregated attestation received from the gossip network and:
+    /// 处理从gossip network中接收到的aggregated attestation
     ///
     /// - If it passes gossip propagation criteria, tell the network thread to forward it.
+    /// - 如果它通过了gossip propagation的标准，告诉network thread转发它
     /// - Attempt to apply it to fork choice.
+    /// - 试着将它应用到fork choice
     /// - Attempt to add it to the block inclusion pool.
+    /// - 试着将它加入到block inclusion pool
     ///
     /// Raises a log if there are errors.
+    /// 如果有错误，就记录一个log
     pub fn process_gossip_aggregate(
         self,
         message_id: MessageId,
@@ -460,6 +469,7 @@ impl<T: BeaconChainTypes> Worker<T> {
         reprocess_tx: Option<mpsc::Sender<ReprocessQueueMessage<T>>>,
         seen_timestamp: Duration,
     ) {
+        // 获取aggregate针对的beacon_block_root
         let beacon_block_root = aggregate.message.aggregate.data.beacon_block_root;
 
         let result = match self
@@ -499,6 +509,7 @@ impl<T: BeaconChainTypes> Worker<T> {
         {
             Ok(results) => results,
             Err(e) => {
+                // attestations校验失败
                 error!(
                     self.log,
                     "Batch agg. attn verification failed";
@@ -566,6 +577,7 @@ impl<T: BeaconChainTypes> Worker<T> {
                 let indexed_attestation = &verified_aggregate.indexed_attestation;
 
                 // If the attestation is still timely, propagate it.
+                // 如果attestation还是timely的，就propagate它
                 self.propagate_attestation_if_timely(
                     verified_aggregate.attestation(),
                     message_id,
@@ -573,6 +585,7 @@ impl<T: BeaconChainTypes> Worker<T> {
                 );
 
                 // Register the attestation with any monitored validators.
+                // 注册attestation到任何被监控的validators
                 self.chain
                     .validator_monitor
                     .read()
@@ -589,6 +602,7 @@ impl<T: BeaconChainTypes> Worker<T> {
 
                 if let Err(e) = self
                     .chain
+                    // 应用attestation到fork choice
                     .apply_attestation_to_fork_choice(&verified_aggregate)
                 {
                     match e {
@@ -613,6 +627,7 @@ impl<T: BeaconChainTypes> Worker<T> {
                     }
                 }
 
+                // 添加到block inclusion pool
                 if let Err(e) = self.chain.add_to_block_inclusion_pool(verified_aggregate) {
                     debug!(
                         self.log,
@@ -632,6 +647,7 @@ impl<T: BeaconChainTypes> Worker<T> {
                 error,
             }) => {
                 // Report the failure to gossipsub
+                // 将失败的信息报告给gossipsub
                 self.handle_attestation_verification_failure(
                     peer_id,
                     message_id,
@@ -648,10 +664,13 @@ impl<T: BeaconChainTypes> Worker<T> {
     }
 
     /// Process the beacon block received from the gossip network and:
+    /// 处理从gossip network中接收到的beacon block
     ///
     /// - If it passes gossip propagation criteria, tell the network thread to forward it.
+    /// - 如果它通过了gossip propagation的标准，告诉network thread转发它
     /// - Attempt to add it to the beacon chain, informing the sync thread if more blocks need to
     ///   be downloaded.
+    /// - 试着将它加入到beacon chain，如果需要下载更多的block，就通知sync thread
     ///
     /// Raises a log if there are errors.
     #[allow(clippy::too_many_arguments)]
@@ -700,8 +719,10 @@ impl<T: BeaconChainTypes> Worker<T> {
 
     /// Process the beacon block received from the gossip network and
     /// if it passes gossip propagation criteria, tell the network thread to forward it.
+    /// 处理从gossip network中接收到的beacon block，如果它通过了gossip propagation的标准，告诉network thread转发它
     ///
     /// Returns the `GossipVerifiedBlock` if verification passes and raises a log if there are errors.
+    /// 返回`GossipVerifiedBlock`如果校验通过，如果有错误，就记录一个log
     pub async fn process_gossip_unverified_block(
         &self,
         message_id: MessageId,
@@ -928,6 +949,7 @@ impl<T: BeaconChainTypes> Worker<T> {
     }
 
     /// Process the beacon block that has already passed gossip verification.
+    /// 处理已经通过gossip verification的beacon block
     ///
     /// Raises a log if there are errors.
     pub async fn process_gossip_verified_block(
@@ -1269,9 +1291,12 @@ impl<T: BeaconChainTypes> Worker<T> {
     }
 
     /// Process the sync committee signature received from the gossip network and:
+    /// 处理从gossip network中接收到的sync committee signature
     ///
     /// - If it passes gossip propagation criteria, tell the network thread to forward it.
     /// - Attempt to add it to the naive aggregation pool.
+    /// - 如果它通过了gossip propagation的标准，告诉network thread转发它
+    /// - 试着将它加入到naive aggregation pool
     ///
     /// Raises a log if there are errors.
     pub fn process_gossip_sync_committee_signature(
@@ -2442,6 +2467,7 @@ impl<T: BeaconChainTypes> Worker<T> {
     }
 
     /// Propagate (accept) if `is_timely == true`, otherwise ignore.
+    /// 传播(接受)如果`is_timely == true`，否则忽略。
     fn propagate_if_timely(&self, is_timely: bool, message_id: MessageId, peer_id: PeerId) {
         if is_timely {
             // The message is still relevant, propagate.
@@ -2455,6 +2481,7 @@ impl<T: BeaconChainTypes> Worker<T> {
 
     /// If an attestation (agg. or unagg.) is still valid with respect to the current time (i.e.,
     /// timely), propagate it on gossip. Otherwise, ignore it.
+    /// 如果一个attestation(agg. or unagg.)仍然有效，与当前时间相关(即，及时)，在gossip传播它。否则，忽略它。
     fn propagate_attestation_if_timely(
         &self,
         attestation: &Attestation<T::EthSpec>,

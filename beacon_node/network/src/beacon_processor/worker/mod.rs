@@ -25,6 +25,7 @@ pub struct Worker<T: BeaconChainTypes> {
 
 impl<T: BeaconChainTypes> Worker<T> {
     /// Send a message to `sync_tx`.
+    /// 发送一个message到`sync_tx`
     ///
     /// Creates a log if there is an internal error.
     fn send_sync_message(&self, message: SyncMessage<T::EthSpec>) {
@@ -35,6 +36,7 @@ impl<T: BeaconChainTypes> Worker<T> {
     }
 
     /// Send a message to `network_tx`.
+    /// 发送一个message到`network_tx`
     ///
     /// Creates a log if there is an internal error.
     fn send_network_message(&self, message: NetworkMessage<T::EthSpec>) {

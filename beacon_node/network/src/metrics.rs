@@ -193,6 +193,7 @@ lazy_static! {
         "Total number of backfill chain segments that failed processing."
     );
     // Unaggregated attestations.
+    // 未聚合的attestations
     pub static ref BEACON_PROCESSOR_UNAGGREGATED_ATTESTATION_QUEUE_TOTAL: Result<IntGauge> = try_create_int_gauge(
         "beacon_processor_unaggregated_attestation_queue_total",
         "Count of unagg. attestations waiting to be processed."
@@ -212,10 +213,12 @@ lazy_static! {
     // Aggregated attestations.
     pub static ref BEACON_PROCESSOR_AGGREGATED_ATTESTATION_QUEUE_TOTAL: Result<IntGauge> = try_create_int_gauge(
         "beacon_processor_aggregated_attestation_queue_total",
+        // 等待被处理的attestations的数量
         "Count of agg. attestations waiting to be processed."
     );
     pub static ref BEACON_PROCESSOR_AGGREGATED_ATTESTATION_VERIFIED_TOTAL: Result<IntCounter> = try_create_int_counter(
         "beacon_processor_aggregated_attestation_verified_total",
+        // 针对gossip的聚合证明的总数
         "Total number of aggregated attestations verified for gossip."
     );
     pub static ref BEACON_PROCESSOR_AGGREGATED_ATTESTATION_IMPORTED_TOTAL: Result<IntCounter> = try_create_int_counter(

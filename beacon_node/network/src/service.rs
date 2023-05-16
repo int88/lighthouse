@@ -54,11 +54,13 @@ pub enum RequestId {
 }
 
 /// Types of messages that the network service can receive.
+/// network service可以接收的消息类型
 #[derive(Debug, IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
 pub enum NetworkMessage<T: EthSpec> {
     /// Subscribes the beacon node to the core gossipsub topics. We do this when we are either
     /// synced or close to the head slot.
+    /// 订阅beacon node到core gossipsub topics。当我们同步或者接近head slot时，我们这样做
     SubscribeCoreTopics,
     /// Send an RPC request to the libp2p service.
     SendRequest {

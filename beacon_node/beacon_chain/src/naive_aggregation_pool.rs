@@ -317,9 +317,11 @@ impl<E: EthSpec> AggregateMap for SyncContributionAggregateMap<E> {
 
 /// A pool of `Attestation` or `SyncCommitteeContribution` that is specially designed to store
 /// "unaggregated" messages from the native aggregation scheme.
+/// 一个Attestation或SyncCommitteeContribution的池，专门用于存储来自本地聚合方案的“未聚合”消息。
 ///
 /// **The `NaiveAggregationPool` does not do any verification. It assumes that all `Attestation`
 /// or `SyncCommitteeContribution` objects provided are valid.**
+/// **NaiveAggregationPool不执行任何验证。它假设所有提供的Attestation或SyncCommitteeContribution对象都是有效的。**
 ///
 /// ## Details
 ///

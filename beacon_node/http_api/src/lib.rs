@@ -2591,6 +2591,7 @@ pub fn serve<T: BeaconChainTypes>(
                         .map_err(warp_utils::reject::beacon_chain_error)?;
 
                     // allow a tolerance of one slot to account for clock skew
+                    // 允许一个时隙的容差来解决时钟偏差
                     if query.slot > current_slot + 1 {
                         return Err(warp_utils::reject::custom_bad_request(format!(
                             "request slot {} is more than one slot past the current slot {}",

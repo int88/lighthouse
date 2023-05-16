@@ -10,6 +10,7 @@ use tree_hash_derive::TreeHash;
 
 /// A Validators signed aggregate proof to publish on the `beacon_aggregate_and_proof`
 /// gossipsub topic.
+/// 一个Validators签名的聚合证明，发布在`beacon_aggregate_and_proof` gossipsub topic上
 ///
 /// Spec v0.12.1
 #[derive(
@@ -28,8 +29,10 @@ use tree_hash_derive::TreeHash;
 #[arbitrary(bound = "T: EthSpec")]
 pub struct SignedAggregateAndProof<T: EthSpec> {
     /// The `AggregateAndProof` that was signed.
+    /// 一个签名的`AggregateAndProof`
     pub message: AggregateAndProof<T>,
     /// The aggregate attestation.
+    /// 聚合的attestation
     pub signature: Signature,
 }
 

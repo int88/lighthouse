@@ -26,6 +26,7 @@ use std::borrow::Cow;
 use types::*;
 
 /// Verify aggregated attestations using batch BLS signature verification.
+/// 校验aggregated attestations，使用批量BLS签名验证。
 ///
 /// See module-level docs for more info.
 pub fn batch_verify_aggregated_attestations<'a, T, I>(

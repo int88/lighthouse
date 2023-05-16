@@ -150,11 +150,15 @@ impl CommitteeLengths {
 }
 
 /// Provides the following information for some epoch:
+/// 在一些epoch中提供以下信息：
 ///
 /// - The `state.current_justified_checkpoint` value.
+/// - state的current_justified_checkpoint值。
 /// - The committee lengths for all indices and slots.
+/// - 对于所有索引和slots的委员会长度。
 ///
 /// These values are used during attestation production.
+/// 这些值在attestation生成的时候使用
 pub struct AttesterCacheValue {
     current_justified_checkpoint: Checkpoint,
     committee_lengths: CommitteeLengths,
@@ -186,23 +190,30 @@ impl AttesterCacheValue {
 
 /// The `AttesterCacheKey` is fundamentally the same thing as the proposer shuffling decision root,
 /// however here we use it as an identity for both of the following values:
+/// `AttesterCacheKey`是基本上与proposer shuffling决策root相同的东西，但是在这里我们将其用作以下两个值的标识：
 ///
 /// 1. The `state.current_justified_checkpoint`.
+/// 1. state的current_justified_checkpoint。
 /// 2. The attester shuffling.
+/// 2. attester的shuffling。
 ///
 /// This struct relies upon the premise that the `state.current_justified_checkpoint` in epoch `n`
 /// is determined by the root of the latest block in epoch `n - 1`. Notably, this is identical to
 /// how the proposer shuffling is keyed in `BeaconProposerCache`.
+/// 这个结构依赖于这样一个前提，即第n个epoch中的state.current_justified_checkpoint由第n-1个epoch中最新块的root确定
+/// 值得注意的是，这与BeaconProposerCache中的proposer shuffling的键入方式是相同的。
 ///
 /// It is also safe, but not maximally efficient, to key the attester shuffling with the same
 /// strategy. For better shuffling keying strategies, see the `ShufflingCache`.
 #[derive(Eq, PartialEq, Hash, Clone, Copy)]
 pub struct AttesterCacheKey {
     /// The epoch from which the justified checkpoint should be observed.
-    ///
+    /// justified checkpoint应该被发现的epoch。
     /// Attestations which use `self.epoch` as `target.epoch` should use this key.
+    /// 使用self.epoch作为target.epoch的attestations应该使用这个key。
     epoch: Epoch,
     /// The root of the block at the last slot of `self.epoch - 1`.
+    /// `self.epoch - 1`的最后一个slot的块的root。
     decision_root: Hash256,
 }
 
@@ -288,12 +299,14 @@ impl AttesterCache {
     /// Read the state identified by `state_root` from the database, advance it to the required
     /// slot, use it to prime the cache and return the values for the provided `slot` and
     /// `committee_index`.
+    /// 从数据库中读取由state_root标识的state，将其提前到所需的slot，使用它来启动缓存并返回提供的slot和committee_index的值。
     ///
     /// ## Notes
     ///
     /// This function takes a write-lock on the internal cache. Prefer attempting a `Self::get` call
     /// before running this function as `Self::get` only takes a read-lock and is therefore less
     /// likely to create contention.
+    /// 这个函数对内部的cache进行了写锁定。在运行这个函数之前，最好尝试一个Self::get调用，因为Self::get只需要读锁定，因此不太可能创建争用。
     pub fn load_and_cache_state<T: BeaconChainTypes>(
         &self,
         state_root: Hash256,
@@ -307,14 +320,18 @@ impl AttesterCache {
         let epoch = slot.epoch(slots_per_epoch);
 
         // Take a write-lock on the cache before starting the state read.
+        // 获取一个write-lock，然后开始state read。
         //
         // Whilst holding the write-lock during the state read will create contention, it prevents
         // the scenario where multiple requests from separate threads cause duplicate state reads.
+        // 在state read期间持有write-lock会创建争用，但它可以防止多个来自不同线程的请求导致重复的state reads。
         let mut cache = self.cache.write();
 
         // Try the cache to see if someone has already primed it between the time the function was
         // called and when the cache write-lock was obtained. This avoids performing duplicate state
         // reads.
+        // 尝试缓存，看看是否有人已经在函数被调用的时间和获得缓存写锁之间启动了它。这样可以避免执行重复的state reads。
+        // 防止重复的state reads
         if let Some(value) = cache
             .get(&key)
             .map(|cache_item| cache_item.get::<T::EthSpec>(slot, committee_index, spec))
@@ -329,6 +346,7 @@ impl AttesterCache {
 
         if state.slot() > slot {
             // This indicates an internal inconsistency.
+            // 这表明了一个内部的不一致
             return Err(Error::CannotAttestToFutureState {
                 state_slot: state.slot(),
                 request_slot: slot,
@@ -336,6 +354,7 @@ impl AttesterCache {
         } else if state.current_epoch() < epoch {
             // Only perform a "partial" state advance since we do not require the state roots to be
             // accurate.
+            // 只执行一个“部分”状态提升，因为我们不需要state roots是准确的。
             partial_state_advance(
                 &mut state,
                 Some(state_root),
@@ -346,6 +365,7 @@ impl AttesterCache {
             state.build_committee_cache(RelativeEpoch::Current, spec)?;
         }
 
+        // 构建attester cache value
         let cache_item = AttesterCacheValue::new(&state, spec)?;
         let value = cache_item.get::<T::EthSpec>(slot, committee_index, spec)?;
         Self::insert_respecting_max_len(&mut cache, key, cache_item);
@@ -353,8 +373,10 @@ impl AttesterCache {
     }
 
     /// Insert a value to `cache`, ensuring it does not exceed the maximum length.
+    /// 插入一个value到`cache`中，确保它不会超过最大长度。
     ///
     /// If the cache is already full, the item with the lowest epoch will be removed.
+    /// 如果cache已经满了，将删除epoch最低的item。
     fn insert_respecting_max_len(
         cache: &mut CacheHashMap,
         key: AttesterCacheKey,

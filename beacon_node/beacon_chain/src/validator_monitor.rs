@@ -1041,6 +1041,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
     }
 
     /// Register a `signed_aggregate_and_proof` seen on the gossip network.
+    /// 注册一个在gossip network上看到的`signed_aggregate_and_proof`
     pub fn register_gossip_aggregated_attestation<S: SlotClock>(
         &self,
         seen_timestamp: Duration,
@@ -1084,6 +1085,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
     ) {
         let data = &indexed_attestation.data;
         let epoch = data.slot.epoch(T::slots_per_epoch());
+        // 获取message delay
         let delay = get_message_delay_ms(
             seen_timestamp,
             data.slot,
@@ -1095,6 +1097,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
         if let Some(validator) = self.get_validator(aggregator_index) {
             let id = &validator.id;
 
+            // 注册aggregate attestation的相应指标
             self.aggregatable_metric(id, |label| {
                 metrics::inc_counter_vec(
                     &metrics::VALIDATOR_MONITOR_AGGREGATED_ATTESTATION_TOTAL,

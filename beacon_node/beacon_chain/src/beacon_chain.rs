@@ -1419,8 +1419,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Returns an aggregated `Attestation`, if any, that has a matching `attestation.data`.
+    /// 返回一个aggregated `Attestation`，如果有的话，它有一个匹配的`attestation.data`。
     ///
     /// The attestation will be obtained from `self.naive_aggregation_pool`.
+    /// attestation会从`self.naive_aggregation_pool`中获得
     pub fn get_aggregated_attestation(
         &self,
         data: &AttestationData,
@@ -1435,8 +1437,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Returns an aggregated `Attestation`, if any, that has a matching
     /// `attestation.data.tree_hash_root()`.
+    /// 返回一个aggregated `Attestation`，如果有的话，它有一个匹配的`attestation.data.tree_hash_root()`。
     ///
     /// The attestation will be obtained from `self.naive_aggregation_pool`.
+    /// attestation会从`self.naive_aggregation_pool`中获得
     pub fn get_aggregated_attestation_by_slot_and_root(
         &self,
         slot: Slot,
@@ -1456,6 +1460,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Returns `Ok(attestation)` if the supplied `attestation` references a valid
     /// `beacon_block_root`.
+    /// 返回`Ok(attestation)`，如果提供的`attestation`引用一个合法的`beacon_block_root`
     fn filter_optimistic_attestation(
         &self,
         attestation: Attestation<T::EthSpec>,
@@ -1522,11 +1527,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Produce an unaggregated `Attestation` that is valid for the given `slot` and `index`.
+    /// 生成一个unaggregated `Attestation`，该`Attestation`对于给定的`slot`和`index`是有效的。
     ///
     /// The produced `Attestation` will not be valid until it has been signed by exactly one
     /// validator that is in the committee for `slot` and `index` in the canonical chain.
+    /// 生成的`Attestation`在被恰好一个在`slot`和`index`的委员会中的验证者签名之前是无效的。
     ///
     /// Always attests to the canonical chain.
+    /// 总是attests到canonical chain。
     ///
     /// ## Errors
     ///
@@ -1541,16 +1549,20 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // The early attester cache will return `Some(attestation)` in the scenario where there is a
         // block being imported that will become the head block, but that block has not yet been
         // inserted into the database and set as `self.canonical_head`.
+        // early attester cache会返回`Some(attestation)`，在这种情况下，有一个正在被导入的块将成为head块，但是该块尚未插入到数据库中并设置为`self.canonical_head`。
         //
         // In effect, the early attester cache prevents slow database IO from causing missed
         // head/target votes.
+        // 实际上，early attester cache防止了慢速数据库IO导致的head/target votes丢失。
         //
         // The early attester cache should never contain an optimistically imported block.
+        // early attester cache永远不应该包含一个乐观地导入的块。
         match self
             .early_attester_cache
             .try_attest(request_slot, request_index, &self.spec)
         {
             // The cache matched this request, return the value.
+            // 缓存匹配了这个请求，返回值。
             Ok(Some(attestation)) => return Ok(attestation),
             // The cache did not match this request, proceed with the rest of this function.
             Ok(None) => (),
@@ -1570,9 +1582,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
          * Phase 1/2:
          *
          * Take a short-lived read-lock on the head and copy the necessary information from it.
+         * 从head获取一个短期的读锁，并从中复制必要的信息。
          *
          * It is important that this first phase is as quick as possible; creating contention for
          * the head-lock is not desirable.
+         * 重要的是，第一阶段尽可能快；创建head-lock的争用是不可取的。
          */
 
         let head_state_slot;
@@ -1584,6 +1598,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let head_timer = metrics::start_timer(&metrics::ATTESTATION_PRODUCTION_HEAD_SCRAPE_SECONDS);
         // The following braces are to prevent the `cached_head` Arc from being held for longer than
         // required. It also helps reduce the diff for a very large PR (#3244).
+        // 下面的大括号是为了防止`cached_head` Arc被保留的时间超过所需的时间。它还有助于减少非常大的PR(#3244)的diff。
         {
             let head = self.head_snapshot();
             let head_state = &head.beacon_state;
@@ -1592,6 +1607,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             // There is no value in producing an attestation to a block that is pre-finalization and
             // it is likely to cause expensive and pointless reads to the freezer database. Exit
             // early if this is the case.
+            // 对于一个pre-finalization的block来说，生成一个attestation是没有价值的，而且很可能导致对freezer数据库的昂贵和无意义的读取。如果是这种情况，就提前退出。
             let finalized_slot = head_state
                 .finalized_checkpoint()
                 .epoch
@@ -1606,6 +1622,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             // This function will eventually fail when trying to access a slot which is
             // out-of-bounds of `state.block_roots`. This explicit error is intended to provide a
             // clearer message to the user than an ambiguous `SlotOutOfBounds` error.
+            // 这个函数最终会失败，当试着访问一个超出`state.block_roots`范围的slot时。这个明确的错误意在为用户提供比模棱两可的`SlotOutOfBounds`错误更清晰的消息。
             let slots_per_historical_root = T::EthSpec::slots_per_historical_root() as u64;
             let lowest_permissible_slot =
                 head_state.slot().saturating_sub(slots_per_historical_root);
@@ -1618,24 +1635,29 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
             if request_slot >= head_state.slot() {
                 // When attesting to the head slot or later, always use the head of the chain.
+                // 如果attesting到head slot或更晚的slot，总是使用chain的head。
                 beacon_block_root = head.beacon_block_root;
                 beacon_state_root = head.beacon_state_root();
             } else {
                 // Permit attesting to slots *prior* to the current head. This is desirable when
                 // the VC and BN are out-of-sync due to time issues or overloading.
+                // 允许attesting到当前head之前的slots。当VC和BN由于时间问题或过载而不同步时，这是可取的。
                 beacon_block_root = *head_state.get_block_root(request_slot)?;
                 beacon_state_root = *head_state.get_state_root(request_slot)?;
             };
 
+            // 获取请求的epoch的start slot
             let target_slot = request_epoch.start_slot(T::EthSpec::slots_per_epoch());
             let target_root = if head_state.slot() <= target_slot {
                 // If the state is earlier than the target slot then the target *must* be the head
                 // block root.
+                // 如果state比target slot早，则target *必须*是head block root。
                 beacon_block_root
             } else {
                 *head_state.get_block_root(target_slot)?
             };
             target = Checkpoint {
+                // 请求的epoch以及target root
                 epoch: request_epoch,
                 root: target_root,
             };
@@ -1643,7 +1665,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             current_epoch_attesting_info = if head_state.current_epoch() == request_epoch {
                 // When the head state is in the same epoch as the request, all the information
                 // required to attest is available on the head state.
+                // 如果head state是在同一个epoch中的请求，那么所有的信息都可以在head state上获得。
                 Some((
+                    // 从head state获取当前的justified checkpoint
                     head_state.current_justified_checkpoint(),
                     head_state
                         .get_beacon_committee(request_slot, request_index)?
@@ -1653,17 +1677,20 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             } else {
                 // If the head state is in a *different* epoch to the request, more work is required
                 // to determine the justified checkpoint and committee length.
+                // 如果head state与请求的epoch不同，则需要更多的工作来确定justified checkpoint和committee长度。
                 None
             };
 
             // Determine the key for `self.attester_cache`, in case it is required later in this
             // routine.
+            // 决定`self.attester_cache`的key，以防它在这个程序中稍后需要。
             attester_cache_key =
                 AttesterCacheKey::new(request_epoch, head_state, beacon_block_root)?;
         }
         drop(head_timer);
 
         // Only attest to a block if it is fully verified (i.e. not optimistic or invalid).
+        // 只对一个block进行attest，如果它是完全验证的（即不是乐观的或无效的）。
         match self
             .canonical_head
             .fork_choice_read_lock()
@@ -1685,6 +1712,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
          *  If the justified checkpoint and committee length from the head are suitable for this
          *  attestation, use them. If not, try the attester cache. If the cache misses, load a state
          *  from disk and prime the cache with it.
+         *  如果justified checkpoint和来自head的committee length适合这个attestation，就使用它们
+         *  如果不是，尝试attester cache。如果缓存未命中，则从磁盘加载一个状态，并用它来启动缓存。
          */
 
         let cache_timer =
@@ -1693,14 +1722,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             if let Some((justified_checkpoint, committee_len)) = current_epoch_attesting_info {
                 // The head state is in the same epoch as the attestation, so there is no more
                 // required information.
+                // head state和attestation在同一个epoch，所以没有更多的必要信息。
                 (justified_checkpoint, committee_len)
             } else if let Some(cached_values) = self.attester_cache.get::<T::EthSpec>(
                 &attester_cache_key,
+                // 根据request slot和request index，从head state中获取committee len
                 request_slot,
                 request_index,
                 &self.spec,
             )? {
                 // The suitable values were already cached. Return them.
+                // 合适的值已经缓存了，返回他
                 cached_values
             } else {
                 debug!(
@@ -1714,6 +1746,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 // Neither the head state, nor the attester cache was able to produce the required
                 // information to attest in this epoch. So, load a `BeaconState` from disk and use
                 // it to fulfil the request (and prime the cache to avoid this next time).
+                // head state和attester cache都不能产生需要的信息用于在这个epoch进行attest
+                // 因此，加载一个`BeaconState`从磁盘中，并使用它来满足请求（并启动缓存以避免下次出现这种情况）。
                 let _cache_build_timer =
                     metrics::start_timer(&metrics::ATTESTATION_PRODUCTION_CACHE_PRIME_SECONDS);
                 self.attester_cache.load_and_cache_state(
@@ -1726,7 +1760,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             };
         drop(cache_timer);
 
+        // 构造attestation
         Ok(Attestation {
+            // 设置aggregation bits
             aggregation_bits: BitList::with_capacity(committee_len)?,
             data: AttestationData {
                 slot: request_slot,
@@ -1787,6 +1823,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// Performs the same validation as `Self::verify_aggregated_attestation_for_gossip`, but for
     /// multiple attestations using batch BLS verification. Batch verification can provide
     /// significant CPU-time savings compared to individual verification.
+    /// 执行与`Self :: verify_aggregated_attestation_for_gossip`相同的验证，但使用批处理BLS验证对多个attestation进行验证。与单独验证相比，批处理验证可以提供显着的CPU时间节省。
     pub fn batch_verify_aggregated_attestations_for_gossip<'a, I>(
         &self,
         aggregates: I,

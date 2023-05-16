@@ -263,8 +263,10 @@ enum CheckAttestationSignature {
 
 /// Wraps a `SignedAggregateAndProof` that has been verified up until the point that an
 /// `IndexedAttestation` can be derived.
+/// 封装一个`SignedAggregateAndProof`，该证明已经验证到可以推导出`IndexedAttestation`的点。
 ///
 /// These attestations have *not* undergone signature verification.
+/// 这个attestations没有经过签名验证。
 struct IndexedAggregatedAttestation<'a, T: BeaconChainTypes> {
     signed_aggregate: &'a SignedAggregateAndProof<T::EthSpec>,
     indexed_attestation: IndexedAttestation<T::EthSpec>,
