@@ -190,6 +190,7 @@ pub struct Discovery<TSpec: EthSpec> {
 
 impl<TSpec: EthSpec> Discovery<TSpec> {
     /// NOTE: Creating discovery requires running within a tokio execution environment.
+    /// 注意：创建discovery需要运行一个tokio execution环境
     pub async fn new(
         local_key: &Keypair,
         config: &NetworkConfig,
@@ -224,9 +225,11 @@ impl<TSpec: EthSpec> Discovery<TSpec> {
             .map_err(|e| format!("Discv5 service failed. Error: {:?}", e))?;
 
         // Add bootnodes to routing table
+        // 添加bootnodes到路由表
         for bootnode_enr in config.boot_nodes_enr.clone() {
             if bootnode_enr.node_id() == local_node_id {
                 // If we are a boot node, ignore adding it to the routing table
+                // 如果我们是一个boot node，忽略添加到路由表
                 continue;
             }
             debug!(

@@ -76,10 +76,13 @@ pub struct EpochSummary {
     pub block_min_delay: Option<Duration>,
     /*
      * Aggregates with a target in the current epoch
+     * 聚合在当前epoch的target
      */
     /// The number of signed aggregate and proofs observed.
+    /// 观察到的aggregate和proofs的数量
     pub aggregates: usize,
     /// The delay between when the aggregate should have been produced and when it was observed.
+    /// 在aggregate应该被产生和被观察到之间的delay
     pub aggregate_min_delay: Option<Duration>,
 
     /*

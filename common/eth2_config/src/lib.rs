@@ -1,9 +1,11 @@
 //! This crate primarily exists to serve the `common/eth2_network_configs` crate, by providing the
 //! canonical list of built-in-networks and some tooling to help include those configurations in the
 //! `lighthouse` binary.
+//! 这个crate主要存在服务于`common/eth2_network_configs` crate，通过提供内置网络的规范列表和一些工具来帮助将这些配置包含在`lighthouse`二进制文件中。
 //!
 //! It also provides some additional structs which are useful to other components of `lighthouse`
 //! (e.g., `Eth2Config`).
+//! 它同时提供一些额外的结构，这些结构对于`lighthouse`的其他组件（例如`Eth2Config`）非常有用。
 
 use std::env;
 use std::path::PathBuf;
@@ -12,6 +14,7 @@ use types::{ChainSpec, EthSpecId};
 pub use paste::paste;
 
 // A macro is used to define this constant so it can be used with `include_bytes!`.
+// 一个宏用于定义这个常量，以便它可以与`include_bytes!`一起使用。
 #[macro_export]
 macro_rules! predefined_networks_dir {
     () => {
@@ -105,6 +108,7 @@ pub struct HardcodedNet {
 }
 
 /// Defines an `Eth2NetArchiveAndDirectory` for some network.
+/// 对于一个`Eth2NetArchiveAndDirectory`，对于一些network
 ///
 /// It also defines a `include_<title>_file!` macro which provides a wrapper around
 /// `std::include_bytes`, allowing the inclusion of bytes from the specific testnet directory.
@@ -143,6 +147,7 @@ macro_rules! define_archive {
 }
 
 /// Creates a `HardcodedNet` definition for some network.
+/// 对于一些network创建一个`HardcodedNet`定义。
 #[macro_export]
 macro_rules! define_net {
     ($this_crate: ident, $mod: ident, $include_file: tt) => {{
@@ -178,12 +183,16 @@ macro_rules! define_nets {
 }
 
 /// The canonical macro for defining built-in network configurations.
+/// 用于定义内置网络配置的规范宏。
 ///
 /// This macro will provide:
 ///
 /// - An `Eth2NetArchiveAndDirectory` for each network.
+/// - 一个`Eth2NetArchiveAndDirectory`对于每个network
 /// - `ETH2_NET_DIRS`: a list of all the above `Eth2NetArchiveAndDirectory`.
+/// - `ETH2_NET_DIRS`：一个列表，对于所有上述的`Eth2NetArchiveAndDirectory`。
 /// - The `instantiate_hardcoded_nets` macro (see its documentation).
+/// - `instantiate_hardcoded_nets`宏（请参阅其文档）。
 ///
 /// ## Design Justification
 ///
@@ -232,7 +241,9 @@ macro_rules! define_hardcoded_nets {
 //
 // 0. The name of the testnet as an "ident" (i.e. something that can be a Rust variable name).
 // 1. The human-friendly name of the testnet (i.e. usually with "-" instead of "_").
+// 2. 人类友好的测试网名称（即通常使用“ -”而不是“ _”）。
 // 2. A bool indicating if the genesis state is known and present as a `genesis.ssz.zip`.
+// 2. 一个布尔值，指示创世状态是否已知并作为`genesis.ssz.zip`存在。
 //
 // The directory containing the testnet files should match the human-friendly name (element 1).
 define_hardcoded_nets!(

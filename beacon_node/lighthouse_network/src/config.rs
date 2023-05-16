@@ -90,6 +90,7 @@ pub struct Config {
     pub discv5_config: Discv5Config,
 
     /// List of nodes to initially connect to.
+    /// 一系列nodes，在初始化的时候连接
     pub boot_nodes_enr: Vec<Enr>,
 
     /// List of nodes to initially connect to, on Multiaddr format.
@@ -105,6 +106,7 @@ pub struct Config {
     pub client_version: String,
 
     /// Disables the discovery protocol from starting.
+    /// 在开始的时候就禁止discovery协议
     pub disable_discovery: bool,
 
     /// Attempt to construct external port mappings with UPnP.
@@ -242,6 +244,7 @@ impl Config {
 
 impl Default for Config {
     /// Generate a default network configuration.
+    /// 生成一个默认的network配置
     fn default() -> Self {
         // WARNING: this directory default should be always overwritten with parameters
         // from cli for specific networks.
@@ -290,6 +293,7 @@ impl Default for Config {
             .build();
 
         // NOTE: Some of these get overridden by the corresponding CLI default values.
+        // 注意：这些值会被对应的CLI默认值覆盖
         Config {
             network_dir,
             listen_addresses: ListenAddress::V4(ListenAddr {

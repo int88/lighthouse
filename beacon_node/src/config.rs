@@ -26,6 +26,7 @@ use std::time::Duration;
 use types::{Checkpoint, Epoch, EthSpec, Hash256, PublicKeyBytes, GRAFFITI_BYTES_LEN};
 
 /// Gets the fully-initialized global client.
+/// 获取完整初始化的全局客户端。
 ///
 /// The top-level `clap` arguments should be provided as `cli_args`.
 ///
@@ -407,6 +408,7 @@ pub fn get_config<E: EthSpec>(
 
     /*
      * Load the eth2 network dir to obtain some additional config values.
+     * 加载eth2 network dir来获取一些额外的配置
      */
     let eth2_network_config = context
         .eth2_network_config
@@ -432,6 +434,7 @@ pub fn get_config<E: EthSpec>(
     );
 
     // Only append network config bootnodes if discovery is not disabled
+    // 只扩展network config bootnodes，如果discovery没有被禁用
     if !client_config.network.disable_discovery {
         if let Some(boot_nodes) = &eth2_network_config.boot_enr {
             client_config
@@ -1163,6 +1166,7 @@ pub fn set_network_config(
 
     if cli_args.is_present("disable-discovery") {
         config.disable_discovery = true;
+        // 禁止discovery后，不会发现新的peers
         warn!(log, "Discovery is disabled. New peers will not be found");
     }
 

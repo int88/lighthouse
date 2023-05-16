@@ -15,6 +15,7 @@ use std::{marker::PhantomData, path::PathBuf};
 use types::EthSpec;
 
 /// A set of configuration parameters for the bootnode, established from CLI arguments.
+/// 一系列bootnode的配置，在CLI的参数中建立
 pub struct BootNodeConfig<T: EthSpec> {
     pub listen_socket: SocketAddr,
     // TODO: Generalise to multiaddr
@@ -33,6 +34,7 @@ impl<T: EthSpec> BootNodeConfig<T> {
         let data_dir = get_data_dir(matches);
 
         // Try and obtain bootnodes
+        // 尝试获取bootnodes
 
         let boot_nodes = {
             let mut boot_nodes = Vec::new();

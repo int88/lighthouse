@@ -1,5 +1,6 @@
 //! Provides the `Eth2NetworkConfig` struct which defines the configuration of an eth2 network or
 //! test-network (aka "testnet").
+//! 提供`Eth2NetworkConfig`结构，该结构定义了eth2网络或test-network（又名“testnet”的配置）。
 //!
 //! Whilst the `Eth2NetworkConfig` struct can be used to read a specification from a directory at
 //! runtime, this crate also includes some pre-defined network configurations "built-in" to the
@@ -7,9 +8,13 @@
 //! "built-in", the  genesis state and configuration files is included in the final binary via the
 //! `std::include_bytes` macro. This provides convenience to the user, the binary is self-sufficient
 //! and does not require the configuration to be read from the filesystem at runtime.
+//! 虽然`Eth2NetworkConfig`结构可以在运行时从一个目录读取，这个crate同时包含一些预定义的network配置，内置在
+//! 二进制中（其中最显著的"mainnet"配置）。当一个网络是“内置”的时候，genesis state和配置文件是通过`std::include_bytes`宏
+//! 这为用户提供了方便，二进制文件是自给自足的，不需要在运行时从文件系统中读取配置。
 //!
 //! To add a new built-in testnet, add it to the `define_hardcoded_nets` invocation in the `eth2_config`
 //! crate.
+//! 为了增加一个内置的testnet，将它加到`define_hardcoded_nets`，在`eth2_config`的调用中
 
 use discv5::enr::{CombinedKey, Enr};
 use eth2_config::{instantiate_hardcoded_nets, HardcodedNet};
@@ -33,6 +38,7 @@ instantiate_hardcoded_nets!(eth2_config);
 pub const DEFAULT_HARDCODED_NETWORK: &str = "mainnet";
 
 /// Specifies an Eth2 network.
+/// 指定一个Eth2 network
 ///
 /// See the crate-level documentation for more details.
 #[derive(Clone, PartialEq, Debug)]
@@ -48,6 +54,7 @@ pub struct Eth2NetworkConfig {
 impl Eth2NetworkConfig {
     /// When Lighthouse is built it includes zero or more "hardcoded" network specifications. This
     /// function allows for instantiating one of these nets by name.
+    /// 当Lighthouse被构建时，它包含零个或多个“硬编码”网络规范。此功能允许通过名称实例化其中一个网络。
     pub fn constant(name: &str) -> Result<Option<Self>, String> {
         HARDCODED_NETS
             .iter()
@@ -57,6 +64,7 @@ impl Eth2NetworkConfig {
     }
 
     /// Instantiates `Self` from a `HardcodedNet`.
+    /// 从一个`HardcodedNet`实例化`Self
     fn from_hardcoded_net(net: &HardcodedNet) -> Result<Self, String> {
         Ok(Self {
             deposit_contract_deploy_block: serde_yaml::from_reader(net.deploy_block)
@@ -193,10 +201,12 @@ impl Eth2NetworkConfig {
         }
 
         let deposit_contract_deploy_block = load_from_file!(DEPLOY_BLOCK_FILE);
+        // 从boot_enr.yaml文件中读取enr
         let boot_enr = optional_load_from_file!(BOOT_ENR_FILE);
         let config = load_from_file!(BASE_CONFIG_FILE);
 
         // The genesis state is a special case because it uses SSZ, not YAML.
+        // genesis state是一个特殊情况，因为它使用SSZ，而不是YAML。
         let genesis_file_path = base_dir.join(GENESIS_STATE_FILE);
         let genesis_state_bytes = if genesis_file_path.exists() {
             let mut bytes = vec![];
@@ -277,6 +287,7 @@ mod tests {
                 .unwrap_or_else(|_| panic!("{:?}", net.name));
 
             // Ensure we can parse the YAML config to a chain spec.
+            // 确保我们可以解析YAML配置到链规范。
             if net.name == types::GNOSIS {
                 config.chain_spec::<GnosisEthSpec>().unwrap();
             } else {

@@ -381,10 +381,14 @@ impl<AppReqId: ReqId, TSpec: EthSpec> Network<AppReqId, TSpec> {
     }
 
     /// Starts the network:
+    /// 开始network
     ///
     /// - Starts listening in the given ports.
+    /// - 开始监听给定的端口
     /// - Dials boot-nodes and libp2p peers.
+    /// - 对boot-nodes和libp2p peers进行dial
     /// - Subscribes to starting gossipsub topics.
+    /// - 订阅gossipsub topics
     async fn start(&mut self, config: &crate::NetworkConfig) -> error::Result<()> {
         let enr = self.network_globals.local_enr();
         info!(self.log, "Libp2p Starting"; "peer_id" => %enr.peer_id(), "bandwidth_config" => format!("{}-{}", config.network_load, NetworkLoad::from(config.network_load).name));
@@ -422,17 +426,20 @@ impl<AppReqId: ReqId, TSpec: EthSpec> Network<AppReqId, TSpec> {
         };
 
         // attempt to connect to user-input libp2p nodes
+        // 试着连接用户输入的libp2p nodes
         for multiaddr in &config.libp2p_nodes {
             dial(multiaddr.clone());
         }
 
         // attempt to connect to any specified boot-nodes
+        // 试着连接任何指定的boot-nodes
         let mut boot_nodes = config.boot_nodes_enr.clone();
         boot_nodes.dedup();
 
         for bootnode_enr in boot_nodes {
             for multiaddr in &bootnode_enr.multiaddr() {
                 // ignore udp multiaddr if it exists
+                // 忽略udp multiaddr，如果存在的话
                 let components = multiaddr.iter().collect::<Vec<_>>();
                 if let MProtocol::Udp(_) = components[1] {
                     continue;
