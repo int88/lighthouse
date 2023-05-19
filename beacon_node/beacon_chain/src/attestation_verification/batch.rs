@@ -135,6 +135,7 @@ where
 }
 
 /// Verify unaggregated attestations using batch BLS signature verification.
+/// 使用批量的BLS签名验证来验证unaggregated attestations
 ///
 /// See module-level docs for more info.
 pub fn batch_verify_unaggregated_attestations<'a, T, I>(
@@ -149,6 +150,7 @@ where
     let mut num_failed = 0;
 
     // Perform partial verification of all attestations, collecting the results.
+    // 对所有的attestations进行部分验证，收集结果
     let partial_results = attestations
         .map(|(attn, subnet_opt)| {
             let result = IndexedUnaggregatedAttestation::verify(attn, subnet_opt, chain);
@@ -162,9 +164,11 @@ where
         .collect::<Vec<_>>();
 
     // May be set to `No` if batch verification succeeds.
+    // 可能设置为`No`，如果批量验证成功
     let mut check_signatures = CheckAttestationSignature::Yes;
 
     // Perform batch BLS verification, if any attestation signatures are worth checking.
+    // 执行batch BLS verification，如果任何attestation signatures值得检查
     if num_partially_verified > 0 {
         let signature_setup_timer = metrics::start_timer(
             &metrics::ATTESTATION_PROCESSING_BATCH_UNAGG_SIGNATURE_SETUP_TIMES,
@@ -209,6 +213,7 @@ where
     }
 
     // Complete the attestation verification, potentially verifying all signatures independently.
+    // 完成attestation verification，可能独立验证所有的签名
     let final_results = partial_results
         .into_iter()
         .map(|result| match result {

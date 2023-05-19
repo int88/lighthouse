@@ -1,4 +1,5 @@
 //! Provides detailed logging and metrics for a set of registered validators.
+//! 对于一系列注册的validators提供详细的logging以及metrics
 //!
 //! This component should not affect consensus.
 
@@ -56,10 +57,13 @@ pub struct EpochSummary {
      * target在当前epoch的attestations
      */
     /// The number of attestations seen.
+    /// 已经看到的attestations的数目
     pub attestations: usize,
     /// The delay between when the attestation should have been produced and when it was observed.
+    /// 一个attestation应该被创建和它被观察到之间的时间间隔
     pub attestation_min_delay: Option<Duration>,
     /// The number of times a validators attestation was seen in an aggregate.
+    /// 在一个aggregate中，一个validators attestation被看到的次数
     pub attestation_aggregate_inclusions: usize,
     /// The number of times a validators attestation was seen in a block.
     /// 一个validators attestation在一个block中看到的次数
@@ -73,6 +77,7 @@ pub struct EpochSummary {
     /// The number of blocks observed.
     pub blocks: usize,
     /// The delay between when the block should have been produced and when it was observed.
+    /// block应该被生成到它被发现的时间间隔
     pub block_min_delay: Option<Duration>,
     /*
      * Aggregates with a target in the current epoch
@@ -148,6 +153,7 @@ impl EpochSummary {
 
     pub fn register_unaggregated_attestation(&mut self, delay: Duration) {
         self.attestations += 1;
+        // 更新attestation min delay
         Self::update_if_lt(&mut self.attestation_min_delay, delay);
     }
 
@@ -961,6 +967,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
     }
 
     /// Register an attestation seen on the gossip network.
+    /// 注册一个在gossip network上看到的attestation
     pub fn register_gossip_unaggregated_attestation<S: SlotClock>(
         &self,
         seen_timestamp: Duration,
@@ -999,6 +1006,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
     ) {
         let data = &indexed_attestation.data;
         let epoch = data.slot.epoch(T::slots_per_epoch());
+        // 获取message delay
         let delay = get_message_delay_ms(
             seen_timestamp,
             data.slot,
@@ -1007,15 +1015,18 @@ impl<T: EthSpec> ValidatorMonitor<T> {
         );
 
         indexed_attestation.attesting_indices.iter().for_each(|i| {
+            // 根据索引获得validator
             if let Some(validator) = self.get_validator(*i) {
                 let id = &validator.id;
 
                 self.aggregatable_metric(id, |label| {
                     metrics::inc_counter_vec(
+                        // 收到的unaggregated attestation的总数
                         &metrics::VALIDATOR_MONITOR_UNAGGREGATED_ATTESTATION_TOTAL,
                         &[src, label],
                     );
                     metrics::observe_timer_vec(
+                        // 收到的unaggregated attestation的延迟
                         &metrics::VALIDATOR_MONITOR_UNAGGREGATED_ATTESTATION_DELAY_SECONDS,
                         &[src, label],
                         delay,
@@ -1062,6 +1073,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
     }
 
     /// Register a `signed_aggregate_and_proof` seen on the HTTP API.
+    /// 注册一个在HTTP API看到的`signed_aggregate_and_proof`
     pub fn register_api_aggregated_attestation<S: SlotClock>(
         &self,
         seen_timestamp: Duration,
@@ -1097,6 +1109,7 @@ impl<T: EthSpec> ValidatorMonitor<T> {
         );
 
         let aggregator_index = signed_aggregate_and_proof.message.aggregator_index;
+        // 根据aggregator_index获取validator
         if let Some(validator) = self.get_validator(aggregator_index) {
             let id = &validator.id;
 
@@ -1829,12 +1842,16 @@ pub fn get_slot_delay_ms<S: SlotClock>(
 }
 
 /// Returns the duration between when any message could be produced and the `seen_timestamp`.
+/// 返回任何message可以被产生的时间和`seen_timestamp`之间的duration
 ///
 /// `message_production_delay` is the duration from the beginning of the slot when the message
 /// should be produced.
+/// `message_production_delay`是从slot开始的duration，当message应该被产生的时候
 /// e.g. for unagg attestations, `message_production_delay = slot_duration / 3`.
+/// 例如对于unagg attestations，`message_production_delay = slot_duration / 3`
 ///
 /// `slot` is the slot for which the message was produced.
+/// `slot`是message被产生的slot
 fn get_message_delay_ms<S: SlotClock>(
     seen_timestamp: Duration,
     slot: Slot,

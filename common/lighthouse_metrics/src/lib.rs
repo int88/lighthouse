@@ -262,6 +262,7 @@ pub fn get_histogram(histogram_vec: &Result<HistogramVec>, name: &[&str]) -> Opt
 }
 
 /// Starts a timer on `vec` with the given `name`.
+/// 启动一个timer，在`vec`上，给定`name`
 pub fn start_timer_vec(vec: &Result<HistogramVec>, name: &[&str]) -> Option<HistogramTimer> {
     get_histogram(vec, name).map(|h| h.start_timer())
 }

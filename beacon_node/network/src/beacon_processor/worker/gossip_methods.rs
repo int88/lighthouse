@@ -238,12 +238,17 @@ impl<T: BeaconChainTypes> Worker<T> {
     /* Processing functions */
 
     /// Process the unaggregated attestation received from the gossip network and:
+    /// 处理从gossip network中接收到的unaggregated attestation
     ///
     /// - If it passes gossip propagation criteria, tell the network thread to forward it.
+    /// - 如果它通过了gossip propagation的标准，告诉network thread转发它
     /// - Attempt to apply it to fork choice.
+    /// - 试着应用它到fork choice
     /// - Attempt to add it to the naive aggregation pool.
+    /// - 试着将它添加到naive aggregation pool
     ///
     /// Raises a log if there are errors.
+    /// 有错误时，记录一个log
     #[allow(clippy::too_many_arguments)]
     pub fn process_gossip_attestation(
         self,
@@ -305,6 +310,7 @@ impl<T: BeaconChainTypes> Worker<T> {
         if results.len() != packages.len() {
             // The log is `crit` since in this scenario we might be penalizing/rewarding the wrong
             // peer.
+            // log是`crit`，因为在这种情况下，我们可能会惩罚/奖励错误的peer
             crit!(
                 self.log,
                 "Batch attestation result mismatch";
@@ -315,12 +321,14 @@ impl<T: BeaconChainTypes> Worker<T> {
 
         // Map the results into a new `Vec` so that `results` no longer holds a reference to
         // `packages`.
+        // 将results映射到一个新的`Vec`，这样`results`就不再持有对`packages`的引用
         #[allow(clippy::needless_collect)] // The clippy suggestion fails the borrow checker.
         let results = results
             .into_iter()
             .map(|result| result.map(|verified| verified.into_indexed_attestation()))
             .collect::<Vec<_>>();
 
+        // 遍历每一个result
         for (result, package) in results.into_iter().zip(packages.into_iter()) {
             let result = match result {
                 Ok(indexed_attestation) => Ok(VerifiedUnaggregate {
@@ -347,6 +355,7 @@ impl<T: BeaconChainTypes> Worker<T> {
 
     // Clippy warning is is ignored since the arguments are all of a different type (i.e., they
     // cant' be mixed-up) and creating a struct would result in more complexity.
+    // Clippy警告被忽略，因为参数都是不同的类型（例如，它们不能混合），并且创建一个结构体会导致更复杂。
     #[allow(clippy::too_many_arguments)]
     fn process_gossip_attestation_result(
         &self,
@@ -364,6 +373,7 @@ impl<T: BeaconChainTypes> Worker<T> {
                 let beacon_block_root = indexed_attestation.data.beacon_block_root;
 
                 // Register the attestation with any monitored validators.
+                // 注册attestation到任何被监控的validators
                 self.chain
                     .validator_monitor
                     .read()
@@ -374,6 +384,7 @@ impl<T: BeaconChainTypes> Worker<T> {
                     );
 
                 // If the attestation is still timely, propagate it.
+                // 如果attestation依然是timely的，就propagate它
                 self.propagate_attestation_if_timely(
                     verified_attestation.attestation(),
                     message_id,
@@ -390,6 +401,7 @@ impl<T: BeaconChainTypes> Worker<T> {
 
                 if let Err(e) = self
                     .chain
+                    // 添加attestation到fork choice
                     .apply_attestation_to_fork_choice(&verified_attestation)
                 {
                     match e {
@@ -416,6 +428,7 @@ impl<T: BeaconChainTypes> Worker<T> {
 
                 if let Err(e) = self
                     .chain
+                    // 添加到naive aggregation pool
                     .add_to_naive_aggregation_pool(&verified_attestation)
                 {
                     debug!(

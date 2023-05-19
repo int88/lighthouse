@@ -2619,6 +2619,7 @@ pub fn serve<T: BeaconChainTypes>(
         .and_then(
             |query: api_types::ValidatorAggregateAttestationQuery, chain: Arc<BeaconChain<T>>| {
                 blocking_json_task(move || {
+                    // 通过slot和attestation_data_root获取聚合attestation
                     chain
                         .get_aggregated_attestation_by_slot_and_root(
                             query.slot,
@@ -2734,6 +2735,7 @@ pub fn serve<T: BeaconChainTypes>(
                     let mut failures = Vec::new();
 
                     // Verify that all messages in the post are valid before processing further
+                    // 校验post中的所有messages都是合法的，在进一步处理之前
                     for (index, aggregate) in aggregates.iter().enumerate() {
                         match chain.verify_aggregated_attestation_for_gossip(aggregate) {
                             Ok(verified_aggregate) => {
@@ -2742,6 +2744,7 @@ pub fn serve<T: BeaconChainTypes>(
                                 )));
 
                                 // Notify the validator monitor.
+                                // 通知validator monitor
                                 chain
                                     .validator_monitor
                                     .read()
@@ -2756,20 +2759,25 @@ pub fn serve<T: BeaconChainTypes>(
                             }
                             // If we already know the attestation, don't broadcast it or attempt to
                             // further verify it. Return success.
+                            // 如果我们已经知道了attestation，不要广播它或者尝试进一步验证它。返回成功。
                             //
                             // It's reasonably likely that two different validators produce
                             // identical aggregates, especially if they're using the same beacon
                             // node.
+                            // 可能是两个不同的validators产生了相同的aggregates，尤其是如果他们使用的是同一个beacon node。
                             Err(AttnError::AttestationAlreadyKnown(_)) => continue,
                             // If we've already seen this aggregator produce an aggregate, just
                             // skip this one.
+                            // 如果我们已经看到这个aggregator生成了一个aggregate，就跳过这个。
                             //
                             // We're likely to see this with VCs that use fallback BNs. The first
                             // BN might time-out *after* publishing the aggregate and then the
                             // second BN will indicate it's already seen the aggregate.
+                            // 我们可能会在使用fallback BNs的VCs中看到这一点。第一个BN可能会在发布aggregate之后超时，然后第二个BN会指示它已经看到了aggregate。
                             //
                             // There's no actual error for the user or the network since the
                             // aggregate has been successfully published by some other node.
+                            // 对于用户或网络来说，没有实际的错误，因为aggregate已经被其他节点成功发布了。
                             Err(AttnError::AggregatorAlreadyKnown(_)) => continue,
                             Err(e) => {
                                 error!(log,
@@ -2791,6 +2799,7 @@ pub fn serve<T: BeaconChainTypes>(
                     }
 
                     // Import aggregate attestations
+                    // 导入聚合的attestations
                     for (index, verified_aggregate) in verified_aggregates {
                         if let Err(e) = chain.apply_attestation_to_fork_choice(&verified_aggregate) {
                             error!(log,

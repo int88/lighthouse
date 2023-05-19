@@ -728,6 +728,7 @@ lazy_static! {
     );
     pub static ref VALIDATOR_MONITOR_UNAGGREGATED_ATTESTATION_DELAY_SECONDS: Result<HistogramVec> = try_create_histogram_vec(
         "validator_monitor_unaggregated_attestation_delay_seconds",
+        // validator应该发送attestation的时间和接收到的时间的延迟
         "The delay between when the validator should send the attestation and when it was received.",
         &["src", "validator"]
     );
@@ -758,6 +759,7 @@ lazy_static! {
     );
     pub static ref VALIDATOR_MONITOR_AGGREGATED_ATTESTATION_DELAY_SECONDS: Result<HistogramVec> = try_create_histogram_vec(
         "validator_monitor_aggregated_attestation_delay_seconds",
+        // validator应该发送aggregate到它接收到的时间的延迟
         "The delay between then the validator should send the aggregate and when it was received.",
         &["src", "validator"]
     );

@@ -335,15 +335,20 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     pub op_pool: OperationPool<T::EthSpec>,
     /// A pool of attestations dedicated to the "naive aggregation strategy" defined in the eth2
     /// specs.
+    /// 一个pool，专门用于eth2 specs中定义的"naive aggregation strategy"
     ///
     /// This pool accepts `Attestation` objects that only have one aggregation bit set and provides
     /// a method to get an aggregated `Attestation` for some `AttestationData`.
+    /// 这个pool接收只有一个aggregation bit set的`Attestation`对象，并且提供一个方法来获取一个
+    /// aggregated `Attestation`，用于一些`AttestationData`
     pub naive_aggregation_pool: RwLock<NaiveAggregationPool<AggregatedAttestationMap<T::EthSpec>>>,
     /// A pool of `SyncCommitteeContribution` dedicated to the "naive aggregation strategy" defined in the eth2
     /// specs.
+    /// 一个`SyncCommitteeContribution`的pool，专门用于eth2 specs中定义的"naive aggregation strategy"
     ///
     /// This pool accepts `SyncCommitteeContribution` objects that only have one aggregation bit set and provides
     /// a method to get an aggregated `SyncCommitteeContribution` for some `SyncCommitteeContributionData`.
+    /// 这个pool接收只有一个aggregation bit set的`SyncCommitteeContribution`对象，并且提供一个方法来获取一个
     pub naive_sync_aggregation_pool:
         RwLock<NaiveAggregationPool<SyncContributionAggregateMap<T::EthSpec>>>,
     /// Contains a store of attestations which have been observed by the beacon chain.
@@ -1473,11 +1478,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         {
             // The attestation references a block that is not in fork choice, it must be
             // pre-finalization.
+            // attestation引用一个不在fork choice中的块，它必须是pre-finalization。
             None => Err(Error::CannotAttestToFinalizedBlock { beacon_block_root }),
             // The attestation references a fully valid `beacon_block_root`.
+            // 这个attestation引用一个完全有效的`beacon_block_root`。
             Some(execution_status) if execution_status.is_valid_or_irrelevant() => Ok(attestation),
             // The attestation references a block that has not been verified by an EL (i.e. it
             // is optimistic or invalid). Don't return the block, return an error instead.
+            // 这个attestation引用一个没有被EL验证的块（即乐观或无效）。不要返回块，返回一个错误。
             Some(execution_status) => Err(Error::HeadBlockNotFullyVerified {
                 beacon_block_root,
                 execution_status,
@@ -1778,6 +1786,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// Performs the same validation as `Self::verify_unaggregated_attestation_for_gossip`, but for
     /// multiple attestations using batch BLS verification. Batch verification can provide
     /// significant CPU-time savings compared to individual verification.
+    /// 和`Self::verify_unaggregated_attestation_for_gossip`执行同样的操作，但是对于多个attestations
+    /// 使用batch 
     pub fn batch_verify_unaggregated_attestations_for_gossip<'a, I>(
         &self,
         attestations: I,
@@ -1793,9 +1803,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Accepts some `Attestation` from the network and attempts to verify it, returning `Ok(_)` if
     /// it is valid to be (re)broadcast on the gossip network.
+    /// 从network接受一些`Attestation`并尝试验证它，如果它是有效的，就返回`Ok(_)`，以便在gossip network上进行（重新）广播。
     ///
     /// The attestation must be "unaggregated", that is it must have exactly one
     /// aggregation bit set.
+    /// 这个attestation必须是“unaggregated”，也就是说，它必须有一个聚合位集。
     pub fn verify_unaggregated_attestation_for_gossip<'a>(
         &self,
         unaggregated_attestation: &'a Attestation<T::EthSpec>,
@@ -1808,6 +1820,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         VerifiedUnaggregatedAttestation::verify(unaggregated_attestation, subnet_id, self).map(
             |v| {
                 // This method is called for API and gossip attestations, so this covers all unaggregated attestation events
+                // 这个方法是为API和gossip attestations调用的，所以这个方法涵盖了所有的unaggregated attestation事件
                 if let Some(event_handler) = self.event_handler.as_ref() {
                     if event_handler.has_attestation_subscribers() {
                         event_handler
@@ -1953,12 +1966,15 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Accepts an `VerifiedUnaggregatedAttestation` and attempts to apply it to the "naive
     /// aggregation pool".
+    /// 接受一个`VerifiedUnaggregatedAttestation`并尝试将其应用到“naive aggregation pool
     ///
     /// The naive aggregation pool is used by local validators to produce
     /// `SignedAggregateAndProof`.
+    /// 这个native aggregation pool被本地验证者用来产生`SignedAggregateAndProof`。
     ///
     /// If the attestation is too old (low slot) to be included in the pool it is simply dropped
     /// and no error is returned.
+    /// 如果这个attestation太旧（低slot）而不能包含在pool中，它将被简单地丢弃，不返回错误。
     pub fn add_to_naive_aggregation_pool(
         &self,
         unaggregated_attestation: &impl VerifiedAttestation<T>,

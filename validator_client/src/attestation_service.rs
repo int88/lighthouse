@@ -97,10 +97,12 @@ pub struct Inner<T, E: EthSpec> {
 }
 
 /// Attempts to produce attestations for all known validators 1/3rd of the way through each slot.
+/// 试着生成所有已知validators的attestations，每个slot的1/3。
 ///
 /// If any validators are on the same committee, a single attestation will be downloaded and
 /// returned to the beacon node. This attestation will have a signature from each of the
 /// validators.
+/// 如果有validators在同一个committee，一个单独的attestation将被下载并且返回给beacon node。这个attestation将有每个validators的签名。
 pub struct AttestationService<T, E: EthSpec> {
     inner: Arc<Inner<T, E>>,
 }
@@ -173,15 +175,18 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
 
     /// For each each required attestation, spawn a new task that downloads, signs and uploads the
     /// attestation to the beacon node.
+    /// 对于每个所需的attestation，生成一个新的任务，下载，签名并将attestation上传到beacon node。
     fn spawn_attestation_tasks(&self, slot_duration: Duration) -> Result<(), String> {
         let slot = self.slot_clock.now().ok_or("Failed to read slot clock")?;
         let duration_to_next_slot = self
             .slot_clock
             .duration_to_next_slot()
+            // 无法确定到下一个slot的时间
             .ok_or("Unable to determine duration to next slot")?;
 
         // If a validator needs to publish an aggregate attestation, they must do so at 2/3
         // through the slot. This delay triggers at this time
+        // 如果一个validator需要发布一个aggregate attestation，他们必须在slot的2/3处这样做。这个延迟在这个时候触发。
         let aggregate_production_instant = Instant::now()
             + duration_to_next_slot
                 .checked_sub(slot_duration / 3)
@@ -199,13 +204,17 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
             });
 
         // For each committee index for this slot:
+        // 对于这个slot的每个committee index：
         //
         // - Create and publish an `Attestation` for all required validators.
+        // - 创建并且发布一个`Attestation`给所有需要的validators
         // - Create and publish `SignedAggregateAndProof` for all aggregating validators.
+        // - 创建并且发布`SignedAggregateAndProof`给所有聚合的validators
         duties_by_committee_index
             .into_iter()
             .for_each(|(committee_index, validator_duties)| {
                 // Spawn a separate task for each attestation.
+                // 对于每个attestation，生成一个单独的任务。
                 self.inner.context.executor.spawn_ignoring_error(
                     self.clone().publish_attestations_and_aggregates(
                         slot,
@@ -220,6 +229,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
         // Schedule pruning of the slashing protection database once all unaggregated
         // attestations have (hopefully) been signed, i.e. at the same time as aggregate
         // production.
+        // 调度对slashing protection数据库的修剪，一旦所有的unaggregated attestations都（希望）被签名，即在aggregate production同时。
         self.spawn_slashing_protection_pruning_task(slot, aggregate_production_instant);
 
         Ok(())
@@ -227,6 +237,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
 
     /// Performs the first step of the attesting process: downloading `Attestation` objects,
     /// signing them and returning them to the validator.
+    /// 执行attesting过程的第一步：下载`Attestation`对象，签名并将其返回给验证器。
     ///
     /// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/validator.md#attesting
     ///
@@ -234,6 +245,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
     ///
     /// The given `validator_duties` should already be filtered to only contain those that match
     /// `slot` and `committee_index`. Critical errors will be logged if this is not the case.
+    /// 给定的`validator_duties`应该已经被过滤，只包含与`slot`和`committee_index`匹配的内容。如果不是这种情况，将记录关键错误。
     async fn publish_attestations_and_aggregates(
         self,
         slot: Slot,
@@ -249,6 +261,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
 
         // There's not need to produce `Attestation` or `SignedAggregateAndProof` if we do not have
         // any validators for the given `slot` and `committee_index`.
+        // 如果我们没有给定`slot`和`committee_index`的任何验证器，就没有必要产生`Attestation`或`SignedAggregateAndProof`。
         if validator_duties.is_empty() {
             return Ok(());
         }
@@ -256,6 +269,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
         // Step 1.
         //
         // Download, sign and publish an `Attestation` for each validator.
+        // 下载，签名并发布每个验证器的`Attestation`。
         let attestation_opt = self
             .produce_and_publish_attestations(slot, committee_index, &validator_duties)
             .await
@@ -274,14 +288,18 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
         // Step 2.
         //
         // If an attestation was produced, make an aggregate.
+        // 如果产生了一个attestation，就做一个aggregate。
         if let Some(attestation_data) = attestation_opt {
             // First, wait until the `aggregation_production_instant` (2/3rds
             // of the way though the slot). As verified in the
             // `delay_triggers_when_in_the_past` test, this code will still run
             // even if the instant has already elapsed.
+            // 首先，等到`aggregation_production_instant`（slot的2/3）
+            // 如在`delay_triggers_when_in_the_past`测试中验证的那样，即使instant已经过去，这段代码也会运行。
             sleep_until(aggregate_production_instant).await;
 
             // Start the metrics timer *after* we've done the delay.
+            // 开始度量计时器*之后*我们做了延迟。
             let _aggregates_timer = metrics::start_timer_vec(
                 &metrics::ATTESTATION_SERVICE_TIMES,
                 &[metrics::AGGREGATES],
@@ -290,6 +308,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
             // Then download, sign and publish a `SignedAggregateAndProof` for each
             // validator that is elected to aggregate for this `slot` and
             // `committee_index`.
+            // 然后，为每个被选为此`slot`和`committee_index`聚合的验证器下载，签名并发布一个`SignedAggregateAndProof`。
             self.produce_and_publish_aggregates(&attestation_data, &validator_duties)
                 .await
                 .map_err(move |e| {
@@ -308,6 +327,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
 
     /// Performs the first step of the attesting process: downloading `Attestation` objects,
     /// signing them and returning them to the validator.
+    /// 执行attestation的第一步，下载`Attestation`对象，签名并将其返回给验证器。
     ///
     /// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/validator.md#attesting
     ///
@@ -315,9 +335,11 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
     ///
     /// The given `validator_duties` should already be filtered to only contain those that match
     /// `slot` and `committee_index`. Critical errors will be logged if this is not the case.
+    /// 给定的`validator_duties`应该已经被过滤，只包含与`slot`和`committee_index`匹配的内容。如果不是这种情况，将记录关键错误。
     ///
     /// Only one `Attestation` is downloaded from the BN. It is then cloned and signed by each
     /// validator and the list of individually-signed `Attestation` objects is returned to the BN.
+    /// 只有一个`Attestation`从BN下载。然后，它被每个验证器克隆并签名，并将单独签名的`Attestation`对象列表返回给BN。
     async fn produce_and_publish_attestations(
         &self,
         slot: Slot,
@@ -417,6 +439,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
             .unzip();
 
         // Post the attestations to the BN.
+        // 将attestations发布到BN。
         match self
             .beacon_nodes
             .first_success(
@@ -459,6 +482,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
 
     /// Performs the second step of the attesting process: downloading an aggregated `Attestation`,
     /// converting it into a `SignedAggregateAndProof` and returning it to the BN.
+    /// 执行attesting过程的第二步：下载聚合的`Attestation`，将其转换为`SignedAggregateAndProof`并将其返回给BN。
     ///
     /// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/validator.md#broadcast-aggregate
     ///
@@ -470,6 +494,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
     /// Only one aggregated `Attestation` is downloaded from the BN. It is then cloned and signed
     /// by each validator and the list of individually-signed `SignedAggregateAndProof` objects is
     /// returned to the BN.
+    /// 只有一个aggregated `Attestation`从BN下载。然后，它被每个验证器克隆并签名，并将单独签名的`SignedAggregateAndProof`对象列表返回给BN。
     async fn produce_and_publish_aggregates(
         &self,
         attestation_data: &AttestationData,
@@ -488,6 +513,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
                         &[metrics::AGGREGATES_HTTP_GET],
                     );
                     beacon_node
+                        // 获取合法的aggregate
                         .get_validator_aggregate_attestation(
                             attestation_data.slot,
                             attestation_data.tree_hash_root(),
@@ -504,6 +530,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
             .map_err(|e| e.to_string())?;
 
         // Create futures to produce the signed aggregated attestations.
+        // 创建futures来生成签名的聚合attestations。
         let signing_futures = validator_duties.iter().map(|duty_and_proof| async move {
             let duty = &duty_and_proof.duty;
             let selection_proof = duty_and_proof.selection_proof.as_ref()?;
@@ -518,6 +545,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
 
             match self
                 .validator_store
+                // 生成签名的聚合attestations
                 .produce_signed_aggregate_and_proof(
                     duty.pubkey,
                     duty.validator_index,
@@ -540,6 +568,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
         });
 
         // Execute all the futures in parallel, collecting any successful results.
+        // 并行执行所有的futures，收集任何成功的结果。
         let signed_aggregate_and_proofs = join_all(signing_futures)
             .await
             .into_iter()
@@ -601,6 +630,7 @@ impl<T: SlotClock + 'static, E: EthSpec> AttestationService<T, E> {
     }
 
     /// Spawn a blocking task to run the slashing protection pruning process.
+    /// 生成一个blocking task来运行slashing protection修剪过程。
     ///
     /// Start the task at `pruning_instant` to avoid interference with other tasks.
     fn spawn_slashing_protection_pruning_task(&self, slot: Slot, pruning_instant: Instant) {

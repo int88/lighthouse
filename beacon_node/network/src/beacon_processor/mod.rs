@@ -1005,15 +1005,20 @@ pub struct BeaconProcessor<T: BeaconChainTypes> {
 impl<T: BeaconChainTypes> BeaconProcessor<T> {
     /// Spawns the "manager" task which checks the receiver end of the returned `Sender` for
     /// messages which contain some new work which will be:
+    /// 生成一个"manager" task，检查返回的`Sender`的receiver端，以获取包含新工作的消息，这些消息将会：
     ///
     /// - Performed immediately, if a worker is available.
+    /// - 立刻执行，如果有worker可用
     /// - Queued for later processing, if no worker is currently available.
+    /// - 排队等待处理，如果当前没有worker可用
     ///
     /// Only `self.max_workers` will ever be spawned at one time. Each worker is a `tokio` task
     /// started with `spawn_blocking`.
+    /// 只有`self.max_workers`会被同时生成，每个worker都是一个`tokio` task，使用`spawn_blocking`启动
     ///
     /// The optional `work_journal_tx` allows for an outside process to receive a log of all work
     /// events processed by `self`. This should only be used during testing.
+    /// 可选的`work_journal_tx`允许外部进程接收到`self`处理的所有工作事件的日志，这只应该在测试期间使用
     pub fn spawn_manager(
         mut self,
         event_rx: mpsc::Receiver<WorkEvent<T>>,
@@ -1581,6 +1586,7 @@ impl<T: BeaconChainTypes> BeaconProcessor<T> {
         match work {
             /*
              * Individual unaggregated attestation verification.
+             * 单个的unaggregated attestation验证
              */
             Work::GossipAttestation {
                 message_id,
@@ -1602,12 +1608,14 @@ impl<T: BeaconChainTypes> BeaconProcessor<T> {
             }),
             /*
              * Batched unaggregated attestation verification.
+             * 批量的unaggregated attestation验证
              */
             Work::GossipAttestationBatch { packages } => task_spawner.spawn_blocking(|| {
                 worker.process_gossip_attestation_batch(packages, Some(work_reprocessing_tx))
             }),
             /*
              * Individual aggregated attestation verification.
+             * 单个aggregated attestation验证
              */
             Work::GossipAggregate {
                 message_id,
@@ -1625,12 +1633,14 @@ impl<T: BeaconChainTypes> BeaconProcessor<T> {
             }),
             /*
              * Batched aggregated attestation verification.
+             * 批量的aggregated attestation验证
              */
             Work::GossipAggregateBatch { packages } => task_spawner.spawn_blocking(|| {
                 worker.process_gossip_aggregate_batch(packages, Some(work_reprocessing_tx))
             }),
             /*
              * Verification for beacon blocks received on gossip.
+             * 在gossip接收到的beacon blocks的验证
              */
             Work::GossipBlock {
                 message_id,
@@ -1653,6 +1663,7 @@ impl<T: BeaconChainTypes> BeaconProcessor<T> {
             }),
             /*
              * Import for blocks that we received earlier than their intended slot.
+             * 导入blocks，这些blocks比他们的intended slot早
              */
             Work::DelayedImportBlock {
                 peer_id,
@@ -1666,6 +1677,7 @@ impl<T: BeaconChainTypes> BeaconProcessor<T> {
             )),
             /*
              * Voluntary exits received on gossip.
+             * 接收到的voluntary exits
              */
             Work::GossipVoluntaryExit {
                 message_id,
@@ -1676,6 +1688,7 @@ impl<T: BeaconChainTypes> BeaconProcessor<T> {
             }),
             /*
              * Proposer slashings received on gossip.
+             * 接收到的proposer slashings
              */
             Work::GossipProposerSlashing {
                 message_id,
@@ -1777,6 +1790,7 @@ impl<T: BeaconChainTypes> BeaconProcessor<T> {
             }),
             /*
              * Verification for beacon blocks received during syncing via RPC.
+             * 在RPC接收到的beacon blocks的验证
              */
             Work::RpcBlock {
                 block_root,
@@ -1795,6 +1809,7 @@ impl<T: BeaconChainTypes> BeaconProcessor<T> {
             )),
             /*
              * Verification for a chain segment (multiple blocks).
+             * 对一个chain segment的校验
              */
             Work::ChainSegment { process_id, blocks } => {
                 let notify_execution_layer = if self
@@ -1913,8 +1928,10 @@ impl<T: BeaconChainTypes> BeaconProcessor<T> {
 }
 
 /// Spawns tasks that are either:
+/// 生成tasks，要么是：
 ///
 /// - Blocking (i.e. intensive methods that shouldn't run on the core `tokio` executor)
+/// - 阻塞（例如，密集的方法，不应该在核心的`tokio` executor上运行）
 /// - Async (i.e. `async` methods)
 ///
 /// Takes a `SendOnDrop` and ensures it is dropped after the task completes. This frees the beacon

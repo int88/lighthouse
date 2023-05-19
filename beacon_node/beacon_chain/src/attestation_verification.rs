@@ -119,19 +119,23 @@ pub enum Error {
     AggregatorPubkeyUnknown(u64),
     /// The attestation has been seen before; either in a block, on the gossip network or from a
     /// local validator.
+    /// 这个attestation之前已经被看到过了；在一个block中，或者在gossip网络中，或者来自一个本地的validator。
     ///
     /// ## Peer scoring
     ///
     /// It's unclear if this attestation is valid, however we have already observed it and do not
     /// need to observe it again.
+    /// 不清楚这个attestation是否有效，但是我们已经观察到了它，不需要再观察它了。
     AttestationAlreadyKnown(Hash256),
     /// There has already been an aggregation observed for this validator, we refuse to process a
     /// second.
+    /// 这个validator已经有一个聚合了的attestation了，我们拒绝处理第二个。
     ///
     /// ## Peer scoring
     ///
     /// It's unclear if this attestation is valid, however we have already observed an aggregate
     /// attestation from this validator for this epoch and should not observe another.
+    /// 不清楚这个attestation是否有效，但是我们已经观察到了这个validator在这个epoch的一个聚合attestation，不应该再观察到另一个。
     AggregatorAlreadyKnown(u64),
     /// The aggregator index is higher than the maximum possible validator count.
     ///

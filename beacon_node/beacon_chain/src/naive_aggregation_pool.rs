@@ -59,6 +59,7 @@ pub enum Error {
 
 /// Implemented for items in the `NaiveAggregationPool`. Requires that items implement `SlotData`,
 /// which means they have an associated slot. This handles aggregation of items that are inserted.
+/// 对于`NaiveAggregationPool`的items的实现，要求items实现`SlotData`，这意味着他们有一个关联的slot。这处理了插入的items的聚合。
 pub trait AggregateMap {
     /// `Key` should be a hash of `Data`.
     type Key;
@@ -102,6 +103,7 @@ pub trait AggregateMap {
 
 /// A collection of `Attestation` objects, keyed by their `attestation.data`. Enforces that all
 /// `attestation` are from the same slot.
+/// 一系列的`Attestations`对象，由他们的`attestation.data`作为key。确保所有的`attestation`都来自同一个slot。
 pub struct AggregatedAttestationMap<E: EthSpec> {
     map: HashMap<AttestationDataRoot, Attestation<E>>,
 }
@@ -415,6 +417,7 @@ impl<T: AggregateMap> NaiveAggregationPool<T> {
     }
 
     /// Returns an aggregated `T::Value` with the given `slot` and `root`, if any.
+    /// 返回一个聚合的`T::Value`，有着给定的`slot`和`root`，如果有的话。
     pub fn get_by_slot_and_root(&self, slot: Slot, root: &T::Key) -> Option<T::Value> {
         self.maps
             .get(&slot)

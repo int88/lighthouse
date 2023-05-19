@@ -94,6 +94,7 @@ pub trait SlotClock: Send + Sync + Sized + Clone {
 
     /// Returns the delay between the start of the slot and when aggregated attestations should be
     /// produced.
+    /// 返回slot的开始以及aggregated attestations应该被产生的延迟
     fn agg_attestation_production_delay(&self) -> Duration {
         self.slot_duration() * 2 / INTERVALS_PER_SLOT as u32
     }
