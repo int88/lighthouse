@@ -187,6 +187,7 @@ pub struct Proposer {
 }
 
 /// Information from the beacon chain that is necessary for querying the builder API.
+/// 来自beacon chain的信息，用于查询builder API
 pub struct BuilderParams {
     pub pubkey: PublicKeyBytes,
     pub slot: Slot,

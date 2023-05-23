@@ -18,6 +18,7 @@ impl<T: BeaconChainTypes> ToStatusMessage for BeaconChain<T> {
 }
 
 /// Build a `StatusMessage` representing the state of the given `beacon_chain`.
+/// 构建一个`StatusMessage`表示给定的`beacon_chain`的状态
 pub(crate) fn status_message<T: BeaconChainTypes>(beacon_chain: &BeaconChain<T>) -> StatusMessage {
     let fork_digest = beacon_chain.enr_fork_id().fork_digest;
     let cached_head = beacon_chain.canonical_head.cached_head();

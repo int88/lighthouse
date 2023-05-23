@@ -7,6 +7,7 @@ use types::{
 
 /// Represents some block and its associated state. Generally, this will be used for tracking the
 /// head, justified head and finalized head.
+/// 代表一些block以及它相关的state，一般来说，它会使用来追踪head, justified head, finalized head
 #[derive(Clone, Serialize, PartialEq, Debug)]
 pub struct BeaconSnapshot<E: EthSpec, Payload: AbstractExecPayload<E> = FullPayload<E>> {
     pub beacon_block: Arc<SignedBeaconBlock<E, Payload>>,
@@ -16,6 +17,7 @@ pub struct BeaconSnapshot<E: EthSpec, Payload: AbstractExecPayload<E> = FullPayl
 
 impl<E: EthSpec, Payload: AbstractExecPayload<E>> BeaconSnapshot<E, Payload> {
     /// Create a new checkpoint.
+    /// 创建一个新的checkpoint
     pub fn new(
         beacon_block: Arc<SignedBeaconBlock<E, Payload>>,
         beacon_block_root: Hash256,
@@ -29,6 +31,7 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> BeaconSnapshot<E, Payload> {
     }
 
     /// Returns the state root from `self.beacon_block`.
+    /// 从`self.beacon_block`返回state root
     ///
     /// ## Caution
     ///

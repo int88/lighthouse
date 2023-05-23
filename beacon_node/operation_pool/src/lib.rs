@@ -240,11 +240,13 @@ impl<T: EthSpec> OperationPool<T> {
     }
 
     /// Get a list of attestations for inclusion in a block.
+    /// 获取一系列的attestations，包含在一个block中
     ///
     /// The `validity_filter` is a closure that provides extra filtering of the attestations
     /// before an approximately optimal bundle is constructed. We use it to provide access
     /// to the fork choice data from the `BeaconChain` struct that doesn't logically belong
     /// in the operation pool.
+    /// `validity_filter`是一个closure，提供额外的过滤attestations的功能，这些attestations在一个近似最优的bundle被构建之前。
     pub fn get_attestations(
         &self,
         state: &BeaconState<T>,
@@ -253,6 +255,7 @@ impl<T: EthSpec> OperationPool<T> {
         spec: &ChainSpec,
     ) -> Result<Vec<Attestation<T>>, OpPoolError> {
         // Attestations for the current fork, which may be from the current or previous epoch.
+        // 当前fork的attestations，可能是当前或者上一个epoch的
         let (prev_epoch_key, curr_epoch_key) = CheckpointKey::keys_for_state(state);
         let all_attestations = self.attestations.read();
         let total_active_balance = state
@@ -260,6 +263,7 @@ impl<T: EthSpec> OperationPool<T> {
             .map_err(OpPoolError::GetAttestationsTotalBalanceError)?;
 
         // Update the reward cache.
+        // 更新reward cache
         let reward_timer = metrics::start_timer(&metrics::BUILD_REWARD_CACHE_TIME);
         let mut reward_cache = self.reward_cache.write();
         reward_cache.update(state)?;
@@ -268,6 +272,7 @@ impl<T: EthSpec> OperationPool<T> {
 
         // Split attestations for the previous & current epochs, so that we
         // can optimise them individually in parallel.
+        // 分开上一个和当前epoch的attestations，这样我们可以并行优化它们
         let mut num_prev_valid = 0_i64;
         let mut num_curr_valid = 0_i64;
 

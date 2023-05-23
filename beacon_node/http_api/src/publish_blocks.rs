@@ -27,6 +27,7 @@ pub enum ProvenancedBlock<T: EthSpec> {
 }
 
 /// Handles a request from the HTTP API for full blocks.
+/// 处理来自HTTP API的对于full blocks的请求。
 pub async fn publish_block<T: BeaconChainTypes>(
     block_root: Option<Hash256>,
     provenanced_block: ProvenancedBlock<T::EthSpec>,
@@ -49,6 +50,7 @@ pub async fn publish_block<T: BeaconChainTypes>(
 
     // Send the block, regardless of whether or not it is valid. The API
     // specification is very clear that this is the desired behaviour.
+    // 发送block，不管它是否有效。API规范非常清楚，这是期望的行为。
 
     let message = PubsubMessage::BeaconBlock(block.clone());
     crate::publish_pubsub_message(network_tx, message)?;
@@ -75,6 +77,7 @@ pub async fn publish_block<T: BeaconChainTypes>(
             );
 
             // Notify the validator monitor.
+            // 通知validator monitor
             chain.validator_monitor.read().register_api_block(
                 seen_timestamp,
                 block.message(),
@@ -84,6 +87,7 @@ pub async fn publish_block<T: BeaconChainTypes>(
 
             // Update the head since it's likely this block will become the new
             // head.
+            // 更新head，因为这个block很可能成为新的head。
             chain.recompute_head_at_current_slot().await;
 
             // Only perform late-block logging here if the block is local. For
@@ -98,6 +102,7 @@ pub async fn publish_block<T: BeaconChainTypes>(
         Err(BlockError::BlockIsAlreadyKnown) => {
             info!(
                 log,
+                // 来自HTTP API的Block已知
                 "Block from HTTP API already known";
                 "block" => ?block.canonical_root(),
                 "slot" => block.slot(),
@@ -107,6 +112,7 @@ pub async fn publish_block<T: BeaconChainTypes>(
         Err(BlockError::RepeatProposal { proposer, slot }) => {
             warn!(
                 log,
+                // 因为重复的proposal而忽略的block
                 "Block ignored due to repeat proposal";
                 "msg" => "this can happen when a VC uses fallback BNs. \
                     whilst this is not necessarily an error, it can indicate issues with a BN \

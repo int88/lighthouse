@@ -28,12 +28,16 @@ impl ShutdownReason {
 }
 
 /// Provides a `Handle` by either:
+/// 提供一个`Handle`，通过以下方式之一：
 ///
 /// 1. Holding a `Weak<Runtime>` and calling `Runtime::handle`.
+/// 1. 维护一个`Weak<Runtime>`并调用`Runtime::handle`
 /// 2. Directly holding a `Handle` and cloning it.
+/// 2. 直接维护一个`Handle`并克隆它
 ///
 /// This enum allows the `TaskExecutor` to work in production where a `Weak<Runtime>` is directly
 /// accessible and in testing where the `Runtime` is hidden outside our scope.
+/// 这个枚举允许`TaskExecutor`在生产中工作，其中`Weak<Runtime>`是直接可访问的，在测试中，`Runtime`在我们的范围之外是隐藏的。
 #[derive(Clone)]
 pub enum HandleProvider {
     Runtime(Weak<Runtime>),
@@ -72,8 +76,10 @@ impl HandleProvider {
 #[derive(Clone)]
 pub struct TaskExecutor {
     /// The handle to the runtime on which tasks are spawned
+    /// 到runtime的handle，可以产生任务
     handle_provider: HandleProvider,
     /// The receiver exit future which on receiving shuts down the task
+    /// 接收器退出future，接收到后关闭任务
     exit: exit_future::Exit,
     /// Sender given to tasks, so that if they encounter a state in which execution cannot
     /// continue they can request that everything shuts down.

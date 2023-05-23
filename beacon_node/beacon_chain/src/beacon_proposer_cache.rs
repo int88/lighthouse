@@ -140,6 +140,7 @@ impl BeaconProposerCache {
 }
 
 /// Compute the proposer duties using the head state without cache.
+/// 计算proposer duties，使用head state，不使用cache
 pub fn compute_proposer_duties_from_head<T: BeaconChainTypes>(
     current_epoch: Epoch,
     chain: &BeaconChain<T>,

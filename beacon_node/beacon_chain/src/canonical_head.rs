@@ -1,10 +1,13 @@
 //! This module provides all functionality for finding the canonical head, updating all necessary
 //! components (e.g. caches) and maintaining a cached head block and state.
+//! 这个module提供了所有的组件用于找到canonical head，更新所有必要的组件（例如caches）和维护一个cached head block和state
 //!
 //! For practically all applications, the "canonical head" can be read using
 //! `beacon_chain.canonical_head.cached_head()`.
+//! 对于几乎所有的应用，"canonical head"可以使用`beacon_chain.canonical_head.cached_head()`来读取
 //!
 //! The canonical head can be updated using `beacon_chain.recompute_head()`.
+//! canonical head可以用`beacon_chain.recompute_head()`来更新
 //!
 //! ## Deadlock safety
 //!
@@ -21,6 +24,8 @@
 //! fork choice lock (lock 1)**. Whilst public functions might indirectly utilise locks (2) and (3),
 //! the fundamental `RwLockWriteGuard` or `RwLockReadGuard` should never be exposed. This prevents
 //! external functions from acquiring these locks in conflicting orders and causing a deadlock.
+//! 为了鼓励安全使用这个module，它应该**只返回fork choice lock（lock 1）的读或写锁**。同时public functions可能会间接地使用锁（2）和（3）
+//! 基本的`RwLockWriteGuard`或`RwLockReadGuard`不应该被暴露。这可以防止外部函数以冲突的顺序获取这些锁并导致死锁
 //!
 //! ## Design Considerations
 //!
@@ -30,6 +35,9 @@
 //! of milliseconds and would block all downstream functions that want to know simple things like
 //! the head block root. This is unacceptable for fast-responding functions like the networking
 //! stack.
+//! 我们将`BeaconForkChoice`和`CachedHead`分成两个`RwLocks`，因为我们想要确保快速访问`CachedHead`。
+//! 如果我们将它们都放在同一个锁下，我们需要获取一个独占的写锁，以便运行`ForkChoice::get_head`。
+//! 这可能需要几十毫秒，并且会阻塞所有想要知道简单事物的下游函数，例如head block root。这对于快速响应的函数（如网络堆栈）是不可接受的
 
 use crate::persisted_fork_choice::PersistedForkChoice;
 use crate::{
@@ -59,6 +67,7 @@ use types::*;
 
 /// Simple wrapper around `RwLock` that uses private visibility to prevent any other modules from
 /// accessing the contained lock without it being explicitly noted in this module.
+/// 简单的wrapper，围绕`RwLock`使用私有可见性，以防止任何其他模块在没有在此模块中明确注释的情况下访问所包含的锁
 pub struct CanonicalHeadRwLock<T>(RwLock<T>);
 
 impl<T> From<RwLock<T>> for CanonicalHeadRwLock<T> {
@@ -82,34 +91,44 @@ impl<T> CanonicalHeadRwLock<T> {
 }
 
 /// Provides a series of cached values from the last time `BeaconChain::recompute_head` was run.
+/// 提供一系列的缓存值，从上一次`BeaconChain::recompute_head`运行之后
 ///
 /// This struct is designed to be cheap-to-clone, any large fields should be wrapped in an `Arc` (or
 /// similar).
+/// 这个结构被设计为cheap-to-clone，任何大的字段应该被封装到一个`Arc`（或类似的）中
 #[derive(Clone)]
 pub struct CachedHead<E: EthSpec> {
     /// Provides the head block and state from the last time the head was updated.
+    /// 提供head block以及state，从上次head被更新的时间开始
     pub snapshot: Arc<BeaconSnapshot<E>>,
     /// The justified checkpoint as per `self.fork_choice`.
+    /// 按照`self.fork_choice`的规则，进行的检查点
     ///
     /// This value may be distinct to the `self.snapshot.beacon_state.justified_checkpoint`.
+    /// 这个值可能是不同的，`self.snapshot.beacon_state.justified_checkpoint`
     /// This value should be used over the beacon state value in practically all circumstances.
     justified_checkpoint: Checkpoint,
     /// The finalized checkpoint as per `self.fork_choice`.
+    /// 按照`self.fork_choice`的规则，进行的检查点
     ///
     /// This value may be distinct to the `self.snapshot.beacon_state.finalized_checkpoint`.
     /// This value should be used over the beacon state value in practically all circumstances.
     finalized_checkpoint: Checkpoint,
     /// The `execution_payload.block_hash` of the block at the head of the chain. Set to `None`
     /// before Bellatrix.
+    /// 在head of the chain的block的`execution_payload.block_hash`。在Bellatrix之前设置为`None`
     head_hash: Option<ExecutionBlockHash>,
     /// The `execution_payload.block_hash` of the justified block. Set to `None` before Bellatrix.
+    /// justified block的`execution_payload.block_hash`。在Bellatrix之前设置为`None`
     justified_hash: Option<ExecutionBlockHash>,
     /// The `execution_payload.block_hash` of the finalized block. Set to `None` before Bellatrix.
+    /// finalized block的`execution_payload.block_hash`。在Bellatrix之前设置为`None`
     finalized_hash: Option<ExecutionBlockHash>,
 }
 
 impl<E: EthSpec> CachedHead<E> {
     /// Returns root of the block at the head of the beacon chain.
+    /// 返回beacon chain的head block的root
     pub fn head_block_root(&self) -> Hash256 {
         self.snapshot.beacon_block_root
     }
@@ -120,21 +139,25 @@ impl<E: EthSpec> CachedHead<E> {
     }
 
     /// Returns root of the `BeaconState` at the head of the beacon chain.
+    /// 返回在head of the beacon chain的`BeaconState`的root
     ///
     /// ## Note
     ///
     /// This `BeaconState` has *not* been advanced to the current slot, it has the same slot as the
     /// head block.
+    /// 这个`BeaconState`没有移动到当前的slot，它和head block有相同的slot
     pub fn head_state_root(&self) -> Hash256 {
         self.snapshot.beacon_state_root()
     }
 
     /// Returns slot of the block at the head of the beacon chain.
+    /// 返回beacon chain的head block的slot
     ///
     /// ## Notes
     ///
     /// This is *not* the current slot as per the system clock. Use `BeaconChain::slot` for the
     /// system clock (aka "wall clock") slot.
+    /// 这不是系统时钟的当前slot。使用`BeaconChain::slot`作为系统时钟（也称为“wall clock”）slot
     pub fn head_slot(&self) -> Slot {
         self.snapshot.beacon_block.slot()
     }
@@ -190,12 +213,15 @@ impl<E: EthSpec> CachedHead<E> {
     }
 
     /// Returns the finalized checkpoint, as determined by fork choice.
+    /// 返回finalized checkpoint，由fork choice决定
     ///
     /// ## Note
     ///
     /// This is *not* the finalized checkpoint of the `head_snapshot.beacon_state`, rather it is the
     /// best finalized checkpoint that has been observed by `self.fork_choice`. It is possible that
     /// the `head_snapshot.beacon_state` finalized value is earlier than the one returned here.
+    /// 这不是`head_snapshot.beacon_state`的finalized checkpoint，而是`self.fork_choice`观察到的最佳finalized checkpoint
+    /// `head_snapshot.beacon_state`的finalized值可能比这里返回的值更早
     pub fn finalized_checkpoint(&self) -> Checkpoint {
         self.finalized_checkpoint
     }
@@ -213,8 +239,10 @@ impl<E: EthSpec> CachedHead<E> {
     }
 
     /// Returns the cached values of `ForkChoice::forkchoice_update_parameters`.
+    /// 返回`ForkChoice::forkchoice_update_parameters`的缓存值
     ///
     /// Useful for supplying to the execution layer.
+    /// 在提供给execution layer时很有用
     pub fn forkchoice_update_parameters(&self) -> ForkchoiceUpdateParameters {
         ForkchoiceUpdateParameters {
             head_root: self.snapshot.beacon_block_root,
@@ -226,23 +254,31 @@ impl<E: EthSpec> CachedHead<E> {
 }
 
 /// Represents the "canonical head" of the beacon chain.
+/// 代表beacon chain的“canonical head”
 ///
 /// The `cached_head` is elected by the `fork_choice` algorithm contained in this struct.
+/// `cached_head`由包含在这个结构中的`fork_choice`算法选出
 ///
 /// There is no guarantee that the state of the `fork_choice` struct will always represent the
 /// `cached_head` (i.e. we may call `fork_choice` *without* updating the cached values), however
 /// there is a guarantee that the `cached_head` represents some past state of `fork_choice` (i.e.
 /// `fork_choice` never lags *behind* the `cached_head`).
+/// 并不保证`fork_choice`结构的状态总是代表`cached_head`（即我们可能会调用`fork_choice`*without*更新缓存值）
+/// 但是保证`cached_head`代表`fork_choice`的某个过去状态（即`fork_choice`从不落后于`cached_head`）
 pub struct CanonicalHead<T: BeaconChainTypes> {
     /// Provides an in-memory representation of the non-finalized block tree and is used to run the
     /// fork choice algorithm and determine the canonical head.
+    /// 提供一个内存中的非最终化block tree的表示，并用于运行fork choice算法和确定canonical head
     pub fork_choice: CanonicalHeadRwLock<BeaconForkChoice<T>>,
     /// Provides values cached from a previous execution of `self.fork_choice.get_head`.
+    /// 提供从先前执行的`self.fork_choice.get_head`缓存的值
     ///
     /// Although `self.fork_choice` might be slightly more advanced that this value, it is safe to
     /// consider that these values represent the "canonical head" of the beacon chain.
+    /// 尽管`self.fork_choice`可能比这个值更先进，但是可以安全地认为这些值代表了beacon chain的“canonical head”
     pub cached_head: CanonicalHeadRwLock<CachedHead<T::EthSpec>>,
     /// A lock used to prevent concurrent runs of `BeaconChain::recompute_head`.
+    /// 一个锁用于避免并发运行`BeaconChain::recompute_head`
     ///
     /// This lock **should not be made public**, it should only be used inside this module.
     recompute_head_lock: Mutex<()>,
@@ -250,12 +286,15 @@ pub struct CanonicalHead<T: BeaconChainTypes> {
 
 impl<T: BeaconChainTypes> CanonicalHead<T> {
     /// Instantiate `Self`.
+    /// 实例化`Self`
     pub fn new(
         fork_choice: BeaconForkChoice<T>,
         snapshot: Arc<BeaconSnapshot<T::EthSpec>>,
     ) -> Self {
+        // 获取当前的fork choice view
         let fork_choice_view = fork_choice.cached_fork_choice_view();
         let forkchoice_update_params = fork_choice.get_forkchoice_update_parameters();
+        // 构建一个cached head
         let cached_head = CachedHead {
             snapshot,
             justified_checkpoint: fork_choice_view.justified_checkpoint,
@@ -302,6 +341,7 @@ impl<T: BeaconChainTypes> CanonicalHead<T> {
             .get_state(&beacon_state_root, Some(beacon_block.slot()))?
             .ok_or(Error::MissingBeaconState(beacon_state_root))?;
 
+        // 构建snapshot
         let snapshot = BeaconSnapshot {
             beacon_block_root,
             beacon_block: Arc::new(beacon_block),
@@ -320,6 +360,7 @@ impl<T: BeaconChainTypes> CanonicalHead<T> {
 
         *fork_choice_write_lock = fork_choice;
         // Avoid interleaving the fork choice and cached head locks.
+        // 防止交错fork choice和cached head锁
         drop(fork_choice_write_lock);
         *self.cached_head.write() = cached_head;
 
@@ -356,17 +397,22 @@ impl<T: BeaconChainTypes> CanonicalHead<T> {
     }
 
     /// Returns a clone of `self.cached_head`.
+    /// 返回一个`self.cached_head`的克隆
     ///
     /// Takes a read-lock on `self.cached_head` for a short time (just long enough to clone it).
+    /// 获取一个read-lock，在`self.cached_head`上，只需要很短的时间（足够克隆它）
     /// The `CachedHead` is designed to be fast-to-clone so this is preferred to passing back a
     /// `RwLockReadGuard`, which may cause deadlock issues (see module-level documentation).
+    /// `CacheHead`被设计为快速克隆，所以这比传递一个`RwLockReadGuard`更好，这可能会导致死锁问题（请参阅模块级文档）
     ///
     /// This function is safe to be public since it does not expose any locks.
+    /// 这个方法为public是安全的，因为它不会暴露任何锁
     pub fn cached_head(&self) -> CachedHead<T::EthSpec> {
         self.cached_head_read_lock().clone()
     }
 
     /// Access a read-lock for the cached head.
+    /// 访问一个read-lock，用于缓存的head
     ///
     /// This function is **not safe** to be public. See the module-level documentation for more
     /// information about protecting from deadlocks.
@@ -375,6 +421,7 @@ impl<T: BeaconChainTypes> CanonicalHead<T> {
     }
 
     /// Access a write-lock for the cached head.
+    /// 访问cached head的一个写锁
     ///
     /// This function is **not safe** to be public. See the module-level documentation for more
     /// information about protecting from deadlocks.
@@ -383,11 +430,13 @@ impl<T: BeaconChainTypes> CanonicalHead<T> {
     }
 
     /// Access a read-lock for fork choice.
+    /// 访问一个read-lock，用于fork choice
     pub fn fork_choice_read_lock(&self) -> RwLockReadGuard<BeaconForkChoice<T>> {
         self.fork_choice.read()
     }
 
     /// Access a write-lock for fork choice.
+    /// 访问一个write-lock，用于fork choice
     pub fn fork_choice_write_lock(&self) -> RwLockWriteGuard<BeaconForkChoice<T>> {
         self.fork_choice.write()
     }
@@ -395,10 +444,12 @@ impl<T: BeaconChainTypes> CanonicalHead<T> {
 
 impl<T: BeaconChainTypes> BeaconChain<T> {
     /// Contains the "best block"; the head of the canonical `BeaconChain`.
+    /// 包含"best block"；canonical `BeaconChain`的head
     ///
     /// It is important to note that the `snapshot.beacon_state` returned may not match the present slot. It
     /// is the state as it was when the head block was received, which could be some slots prior to
     /// now.
+    /// 重要的是要注意，返回的`snapshot.beacon_state`可能与当前slot不匹配。它是在接收到head block时的状态，这可能是一些slot之前的状态
     pub fn head(&self) -> CachedHead<T::EthSpec> {
         self.canonical_head.cached_head()
     }
@@ -470,6 +521,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Execute the fork choice algorithm and enthrone the result as the canonical head.
+    /// 执行fork choice算法并且将结果作为canonical head
     ///
     /// This method replaces the old `BeaconChain::fork_choice` method.
     pub async fn recompute_head_at_current_slot(self: &Arc<Self>) {
@@ -484,17 +536,22 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Execute the fork choice algorithm and enthrone the result as the canonical head.
+    /// 执行fork choice算法并且将结果作为canonical head
     ///
     /// The `current_slot` is specified rather than relying on the wall-clock slot. Using a
     /// different slot to the wall-clock can be useful for pushing fork choice into the next slot
     /// *just* before the start of the slot. This ensures that block production can use the correct
     /// head value without being delayed.
+    /// `current_slot`是指定的，而不是依赖于wall-clock slot。使用与wall-clock不同的slot对于在slot开始之前将fork choice推入下一个slot是有用的
+    /// 这确保了block production可以使用正确的head值而不会延迟
     ///
     /// This function purposefully does *not* return a `Result`. It's possible for fork choice to
     /// fail to update if there is only one viable head and it has an invalid execution payload. In
     /// such a case it's critical that the `BeaconChain` keeps importing blocks so that the
     /// situation can be rectified. We avoid returning an error here so that calling functions
     /// can't abort block import because an error is returned here.
+    /// 这个函数故意不返回`Result`。如果只有一个可行的head并且它有一个无效的execution payload，fork choice可能无法更新
+    /// 在这种情况下，关键是`BeaconChain`继续导入blocks，以便可以纠正这种情况，我们避免在这里返回一个错误，以便调用函数不能因为在这里返回一个错误而中止block import
     pub async fn recompute_head_at_slot(self: &Arc<Self>, current_slot: Slot) {
         metrics::inc_counter(&metrics::FORK_CHOICE_REQUESTS);
         let _timer = metrics::start_timer(&metrics::FORK_CHOICE_TIMES);
@@ -502,19 +559,24 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let chain = self.clone();
         match self
             .spawn_blocking_handle(
+                // 内部计算head
                 move || chain.recompute_head_at_slot_internal(current_slot),
                 "recompute_head_internal",
             )
             .await
         {
             // Fork choice returned successfully and did not need to update the EL.
+            // Fork choice成功返回，并且不需要更新EL
             Ok(Ok(None)) => (),
             // Fork choice returned successfully and needed to update the EL. It has returned a
             // join-handle from when it spawned some async tasks. We should await those tasks.
+            // Fork choice成功返回并且需要更新EL。它已经返回了一个join-handle，从它产生了一些async tasks。我们应该等待这些tasks
             Ok(Ok(Some(join_handle))) => match join_handle.await {
                 // The async task completed successfully.
+                // async task成功完成
                 Ok(Some(())) => (),
                 // The async task did not complete successfully since the runtime is shutting down.
+                // async task没有成功完成，因为runtime正在关闭
                 Ok(None) => {
                     debug!(
                         self.log,
@@ -523,6 +585,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     );
                 }
                 // The async task did not complete successfully, tokio returned an error.
+                // async task没有成功完成，tokio返回了一个错误
                 Err(e) => {
                     error!(
                         self.log,
@@ -532,6 +595,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 }
             },
             // There was an error recomputing the head.
+            // 在计算head时出现错误
             Ok(Err(e)) => {
                 metrics::inc_counter(&metrics::FORK_CHOICE_ERRORS);
                 error!(
@@ -541,6 +605,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 );
             }
             // There was an error spawning the task.
+            // 在产生task时出现错误
             Err(e) => {
                 error!(
                     self.log,
@@ -552,9 +617,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// A non-async (blocking) function which recomputes the canonical head and spawns async tasks.
+    /// 非异步的函数，计算canonical head并且产生async tasks
     ///
     /// This function performs long-running, heavy-lifting tasks which should not be performed on
     /// the core `tokio` executor.
+    /// 这个函数执行长时间运行的，重型的任务，不应该在核心的`tokio` executor上执行
     fn recompute_head_at_slot_internal(
         self: &Arc<Self>,
         current_slot: Slot,
@@ -562,41 +629,52 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let recompute_head_lock = self.canonical_head.recompute_head_lock.lock();
 
         // Take a clone of the current ("old") head.
+        // 获取一个当前（“old”）head的克隆
         let old_cached_head = self.canonical_head.cached_head();
 
         // Determine the current ("old") fork choice parameters.
+        // 决定当前（“old”）fork choice参数
         //
         // It is important to read the `fork_choice_view` from the cached head rather than from fork
         // choice, since the fork choice value might have changed between calls to this function. We
         // are interested in the changes since we last cached the head values, not since fork choice
         // was last run.
+        // 这是重要的，从cached head而不是从fork choice读取`fork_choice_view`，因为fork choice的值可能在调用这个函数之间改变
+        // 因为fork choice值可能在调用这个函数之间改变。我们对自从上次缓存head值以来的变化感兴趣，而不是自从上次运行fork choice以来的变化
         let old_view = ForkChoiceView {
             head_block_root: old_cached_head.head_block_root(),
             justified_checkpoint: old_cached_head.justified_checkpoint(),
             finalized_checkpoint: old_cached_head.finalized_checkpoint(),
         };
 
+        // 获取fork choice write lock
         let mut fork_choice_write_lock = self.canonical_head.fork_choice_write_lock();
 
         // Recompute the current head via the fork choice algorithm.
+        // 通过fork choice算法重新计算当前head
         fork_choice_write_lock.get_head(current_slot, &self.spec)?;
 
         // Downgrade the fork choice write-lock to a read lock, without allowing access to any
         // other writers.
+        // 将fork choice write-lock降级为read lock，而不允许访问任何其他writer
         let fork_choice_read_lock = RwLockWriteGuard::downgrade(fork_choice_write_lock);
 
         // Read the current head value from the fork choice algorithm.
+        // 读取当前的head value，从fork choice算法
         let new_view = fork_choice_read_lock.cached_fork_choice_view();
 
         // Check to ensure that the finalized block hasn't been marked as invalid. If it has,
         // shut down Lighthouse.
+        // 检查确保finalized block没有被标记为无效。如果是，关闭Lighthouse
         let finalized_proto_block = fork_choice_read_lock.get_finalized_block()?;
         check_finalized_payload_validity(self, &finalized_proto_block)?;
 
         // Sanity check the finalized checkpoint.
+        // 对finalized checkpoint进行健全性检查
         //
         // The new finalized checkpoint must be either equal to or better than the previous
         // finalized checkpoint.
+        // 新的finalized checkpoint必须等于或优于以前的finalized checkpoint
         check_against_finality_reversion(&old_view, &new_view)?;
 
         let new_head_proto_block = fork_choice_read_lock
@@ -606,17 +684,24 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             ))?;
 
         // Do not allow an invalid block to become the head.
+        // 不允许一个无效的block成为head
         //
         // This check avoids the following infinite loop:
+        // 这个检查避免了以下无限循环：
         //
         // 1. A new block is set as the head.
+        // 1. 一个新的block被设置为head
         // 2. The EL is updated with the new head, and returns INVALID.
+        // 2. EL使用新的head更新，并返回INVALID
         // 3. We call `process_invalid_execution_payload` and it calls this function.
+        // 3. 我们调用`process_invalid_execution_payload`，它调用这个函数
         // 4. This function elects an invalid block as the head.
+        // 4. 这个函数选择一个无效的block作为head
         // 5. GOTO 2
         //
         // In theory, fork choice should never select an invalid head (i.e., step #3 is impossible).
         // However, this check is cheap.
+        // 理论上，fork choice永远不会选择一个无效的head（即，步骤#3是不可能的）。但是，这个检查很便宜
         if new_head_proto_block.execution_status.is_invalid() {
             return Err(Error::HeadHasInvalidPayload {
                 block_root: new_head_proto_block.root,
@@ -626,6 +711,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Exit early if the head or justified/finalized checkpoints have not changed, there's
         // nothing to do.
+        // 尽早退出，如果head或者justified/finalized checkpoints没有改变，就没有什么可做的了
         if new_view == old_view {
             debug!(
                 self.log,
@@ -637,6 +723,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Get the parameters to update the execution layer since either the head or some finality
         // parameters have changed.
+        // 获取更新execution layer的参数，因为head或者一些finality参数已经改变
         let new_forkchoice_update_parameters =
             fork_choice_read_lock.get_forkchoice_update_parameters();
 
@@ -644,9 +731,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Drop the read lock, it's no longer required and holding it any longer than necessary
         // will just cause lock contention.
+        // 丢弃read lock，它不再需要，保持它比必要的时间更长只会导致lock contention
         drop(fork_choice_read_lock);
 
         // If the head has changed, update `self.canonical_head`.
+        // 如果head已经发生改变，更新`self.canonical_head`
         let new_cached_head = if new_view.head_block_root != old_view.head_block_root {
             metrics::inc_counter(&metrics::FORK_CHOICE_CHANGED_HEAD);
 
@@ -714,9 +803,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
             new_head
         } else {
+            // 还是重新构建一个cached head
             let new_cached_head = CachedHead {
                 // The head hasn't changed, take a relatively cheap `Arc`-clone of the existing
                 // head.
+                // head没有发生改变，获取一个相对便宜的`Arc`-clone，现有的head
                 snapshot: old_cached_head.snapshot.clone(),
                 justified_checkpoint: new_view.justified_checkpoint,
                 finalized_checkpoint: new_view.finalized_checkpoint,
@@ -729,18 +820,22 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
             // Enshrine the new head as the canonical cached head. Whilst the head block hasn't
             // changed, the FFG checkpoints must have changed.
+            // 将新的head作为canonical cached head。虽然head block没有改变，但是FFG checkpoints必须改变
             *cached_head_write_lock = new_cached_head;
 
             // Take a clone of the cached head for later use. It is cloned whilst
             // holding the write-lock to ensure we get exactly the head we just enshrined.
+            // 获取cached head的一个克隆，以便以后使用。它是在持有write-lock的情况下克隆的，以确保我们得到的恰好是我们刚刚奉为圭臬的head
             cached_head_write_lock.clone()
         };
 
         // Alias for readability.
+        // 为了可读性的别名
         let new_snapshot = &new_cached_head.snapshot;
         let old_snapshot = &old_cached_head.snapshot;
 
         // If the head changed, perform some updates.
+        // 如果head已经发生改变，执行一些更新
         if new_snapshot.beacon_block_root != old_snapshot.beacon_block_root {
             if let Err(e) =
                 self.after_new_head(&old_cached_head, &new_cached_head, new_head_proto_block)
@@ -754,12 +849,15 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Drop the old cache head nice and early to try and free the memory as soon as possible.
+        // 丢弃old cache head并且试着尽快释放内存
         drop(old_cached_head);
 
         // If the finalized checkpoint changed, perform some updates.
+        // 如果finalized checkpoint改变了，执行一些更新
         //
         // The `after_finalization` function will take a write-lock on `fork_choice`, therefore it
         // is a dead-lock risk to hold any other lock on fork choice at this point.
+        // `after_finalization`函数将在`fork_choice`上获取一个write-lock，因此在这一点上，持有fork choice上的任何其他锁都是死锁风险
         if new_view.finalized_checkpoint != old_view.finalized_checkpoint {
             if let Err(e) =
                 self.after_finalization(&new_cached_head, new_view, finalized_proto_block)
@@ -774,11 +872,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // The execution layer updates might attempt to take a write-lock on fork choice, so it's
         // important to ensure the fork-choice lock isn't being held.
+        // execution layer updates可能会尝试在fork choice上获取一个write-lock，因此重要的是确保fork-choice lock没有被持有
         let el_update_handle =
             spawn_execution_layer_updates(self.clone(), new_forkchoice_update_parameters)?;
 
         // We have completed recomputing the head and it's now valid for another process to do the
         // same.
+        // 我们已经重新计算了head并且现在可以让另一个进程做同样的事情
         drop(recompute_head_lock);
 
         Ok(Some(el_update_handle))

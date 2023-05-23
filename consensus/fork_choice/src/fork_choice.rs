@@ -612,17 +612,22 @@ where
     }
 
     /// Return information about:
+    /// 返回信息关于：
     ///
     /// - The LMD head of the chain.
+    /// - chain的LMD head
     /// - The FFG checkpoints.
+    /// - FFG checkpoints
     ///
     /// The information is "cached" since the last call to `Self::get_head`.
+    /// 信息是“缓存”的，因为上一次调用`Self::get_head`
     ///
     /// ## Notes
     ///
     /// The finalized/justified checkpoints are determined from the fork choice store. Therefore,
     /// it's possible that the state corresponding to `get_state(get_block(head_block_root))` will
     /// have *differing* finalized and justified information.
+    /// finalized/justified checkpoints是从fork choice store决定的，因此，可能对应于`get_state(get_block(head_block_root))`的state将会有不同的finalized和justified信息
     pub fn cached_fork_choice_view(&self) -> ForkChoiceView {
         ForkChoiceView {
             head_block_root: self.head_block_root,

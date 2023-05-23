@@ -276,6 +276,7 @@ pub trait BeaconChainTypes: Send + Sync + 'static {
 }
 
 /// Used internally to split block production into discrete functions.
+/// 内部使用，将block production分成离散的functions
 struct PartialBeaconBlock<E: EthSpec, Payload: AbstractExecPayload<E>> {
     state: BeaconState<E>,
     slot: Slot,
@@ -3659,9 +3660,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Produce a new block at the given `slot`.
+    /// 在给定的slot产生一个新的block
     ///
     /// The produced block will not be inherently valid, it must be signed by a block producer.
     /// Block signing is out of the scope of this function and should be done by a separate program.
+    /// 生成的block不会是有效的，它必须被block producer签名，block signing不在这个函数的范围内，应该由一个单独的程序完成
     pub async fn produce_block<Payload: AbstractExecPayload<T::EthSpec> + 'static>(
         self: &Arc<Self>,
         randao_reveal: Signature,
@@ -3678,6 +3681,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Same as `produce_block` but allowing for configuration of RANDAO-verification.
+    /// 和`produce_block`相同，但是允许配置RANDAO-verification
     pub async fn produce_block_with_verification<
         Payload: AbstractExecPayload<T::EthSpec> + 'static,
     >(
@@ -3690,6 +3694,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Part 1/2 (blocking)
         //
         // Load the parent state from disk.
+        // 从磁盘加载parent state
         let chain = self.clone();
         let (state, state_root_opt) = self
             .task_executor
@@ -3704,6 +3709,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Part 2/2 (async, with some blocking components)
         //
         // Produce the block upon the state
+        // 生成block
         self.produce_block_on_state::<Payload>(
             state,
             state_root_opt,
@@ -3717,6 +3723,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Load a beacon state from the database for block production. This is a long-running process
     /// that should not be performed in an `async` context.
+    /// 从database加载一个beacon state用于生成block，这是一个长时间运行的过程，不应该在async context中执行
     fn load_state_for_block_production<Payload: ExecPayload<T::EthSpec>>(
         self: &Arc<Self>,
         slot: Slot,
@@ -3737,6 +3744,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Atomically read some values from the head whilst avoiding holding cached head `Arc` any
         // longer than necessary.
+        // 在不持有cached head `Arc`的情况下，原子性地读取head的一些值
         let (head_slot, head_block_root) = {
             let head = self.canonical_head.cached_head();
             (head.head_slot(), head.head_block_root())
@@ -4029,12 +4037,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         proposal_slot: Slot,
     ) -> Result<Withdrawals<T::EthSpec>, Error> {
         let cached_head = self.canonical_head.cached_head();
+        // 获取head state
         let head_state = &cached_head.snapshot.beacon_state;
 
         let parent_block_root = forkchoice_update_params.head_root;
 
         let (unadvanced_state, unadvanced_state_root) =
             if cached_head.head_block_root() == parent_block_root {
+                // head block root和parent block root相等
                 (Cow::Borrowed(head_state), cached_head.head_state_root())
             } else if let Some(snapshot) = self
                 .snapshot_cache
@@ -4268,13 +4278,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// Typically the `self.produce_block()` function should be used, instead of calling this
     /// function directly. This function is useful for purposefully creating forks or blocks at
     /// non-current slots.
+    /// 典型的`self.produce_block()`函数应该被使用，而不是直接调用这个函数。这个函数对于有意创建forks或者在非当前slot创建block是有用的。
     ///
     /// If required, the given state will be advanced to the given `produce_at_slot`, then a block
     /// will be produced at that slot height.
+    /// 如果需要的话，给定的state会被推进到给定的`produce_at_slot`，然后一个block会在那个slot高度被产生。
     ///
     /// The provided `state_root_opt` should only ever be set to `Some` if the contained value is
     /// equal to the root of `state`. Providing this value will serve as an optimization to avoid
     /// performing a tree hash in some scenarios.
+    /// 提供的`state_root_opt`应该只被设置为`Some`，如果包含的值等于`state`的root。提供这个值将作为一个优化，以避免在某些场景下执行树哈希。
     pub async fn produce_block_on_state<Payload: AbstractExecPayload<T::EthSpec> + 'static>(
         self: &Arc<Self>,
         state: BeaconState<T::EthSpec>,
@@ -4287,6 +4300,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Part 1/3 (blocking)
         //
         // Perform the state advance and block-packing functions.
+        // 执行state advance和block-packing函数
         let chain = self.clone();
         let mut partial_beacon_block = self
             .task_executor
@@ -4309,6 +4323,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Part 2/3 (async)
         //
         // Wait for the execution layer to return an execution payload (if one is required).
+        // 等待execution layer返回一个execution payload（如果需要的话）
         let prepare_payload_handle = partial_beacon_block.prepare_payload_handle.take();
         let block_contents = if let Some(prepare_payload_handle) = prepare_payload_handle {
             Some(
@@ -4324,6 +4339,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Part 3/3 (blocking)
         //
         // Perform the final steps of combining all the parts and computing the state root.
+        // 执行最后一步，将所有部分组合起来并计算state root。
         let chain = self.clone();
         self.task_executor
             .spawn_blocking_handle(
@@ -4355,6 +4371,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .ok_or(BlockProductionError::NoEth1ChainConnection)?;
 
         // It is invalid to try to produce a block using a state from a future slot.
+        // 尝试使用未来slot的state生成block是无效的
         if state.slot() > produce_at_slot {
             return Err(BlockProductionError::StateSlotTooHigh {
                 produce_at_slot,
@@ -4365,10 +4382,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let slot_timer = metrics::start_timer(&metrics::BLOCK_PRODUCTION_SLOT_PROCESS_TIMES);
 
         // Ensure the state has performed a complete transition into the required slot.
+        // 确保state已经完成了对所需slot的完整转换
         complete_state_advance(&mut state, state_root_opt, produce_at_slot, &self.spec)?;
 
         drop(slot_timer);
 
+        // 构建committee cache
         state.build_committee_cache(RelativeEpoch::Current, &self.spec)?;
 
         let parent_root = if state.slot() > 0 {
@@ -4379,6 +4398,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             state.latest_block_header().canonical_root()
         };
 
+        // 获取proposer index
         let proposer_index = state.get_beacon_proposer_index(state.slot(), &self.spec)? as u64;
 
         let pubkey = state
@@ -4399,6 +4419,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // If required, start the process of loading an execution payload from the EL early. This
         // allows it to run concurrently with things like attestation packing.
+        // 如果需要的话，启动从EL中加载execution payload的过程。这允许它与attestation packing等并发运行。
         let prepare_payload_handle = match &state {
             BeaconState::Base(_) | BeaconState::Altair(_) => None,
             BeaconState::Merge(_) | BeaconState::Capella(_) => {
@@ -4420,6 +4441,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Iterate through the naive aggregation pool and ensure all the attestations from there
         // are included in the operation pool.
+        // 遍历naive aggregation pool，并确保所有的attestations都包含在operation pool中。
         let unagg_import_timer =
             metrics::start_timer(&metrics::BLOCK_PRODUCTION_UNAGGREGATED_TIMES);
         for attestation in self.naive_aggregation_pool.read().iter() {
@@ -4440,6 +4462,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         drop(unagg_import_timer);
 
         // Override the beacon node's graffiti with graffiti from the validator, if present.
+        // 覆盖beacon node的graffiti，如果存在的话，使用validator的graffiti。
         let graffiti = match validator_graffiti {
             Some(graffiti) => graffiti,
             None => self.graffiti,
@@ -4471,6 +4494,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // If paranoid mode is enabled re-check the signatures of every included message.
         // This will be a lot slower but guards against bugs in block production and can be
         // quickly rolled out without a release.
+        // 如果使能了paranoid mode，重新检查每个包含的message的签名。这将会慢很多，但是防止了block production的bug，并且可以快速地发布而不需要release。
         if self.config.paranoid_block_proposal {
             let mut tmp_ctxt = ConsensusContext::new(state.slot());
             attestations.retain(|att| {
@@ -4797,6 +4821,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Run fork choice since it's possible that the payload invalidation might result in a new
         // head.
+        // 运行fork choice，因为payload invalidation可能会导致一个新的head。
         self.recompute_head_at_current_slot().await;
 
         // Obtain the justified root from fork choice.
@@ -4855,12 +4880,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// Determines the beacon proposer for the next slot. If that proposer is registered in the
     /// `execution_layer`, provide the `execution_layer` with the necessary information to produce
     /// `PayloadAttributes` for future calls to fork choice.
+    /// 对于下一个slot决定beacon proposer。如果该proposer在`execution_layer`中注册，则提供`execution_layer`所需的信息，
+    /// 以便为将来对fork choice的调用生成`PayloadAttributes`。
     ///
     /// The `PayloadAttributes` are used by the EL to give it a look-ahead for preparing an optimal
     /// set of transactions for a new `ExecutionPayload`.
+    /// 被EL使用的`PayloadAttributes`用于为新的`ExecutionPayload`准备一组最佳事务。
     ///
     /// This function will result in a call to `forkchoiceUpdated` on the EL if we're in the
     /// tail-end of the slot (as defined by `self.config.prepare_payload_lookahead`).
+    /// 这个函数会导致对EL的`forkchoiceUpdated`的调用，如果我们在slot的尾端（由`self.config.prepare_payload_lookahead`定义）。
     pub async fn prepare_beacon_proposer(
         self: &Arc<Self>,
         current_slot: Slot,
@@ -5451,39 +5480,50 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Called by the timer on every slot.
+    /// 每个slot由定时器调用。
     ///
     /// Note: this function **MUST** be called from a non-async context since
     /// it contains a call to `fork_choice` which may eventually call
     /// `tokio::runtime::block_on` in certain cases.
+    /// 注意：这个函数必须从非异步上下文中调用，因为它包含对fork_choice的调用
+    /// 它可能最终在某些情况下调用tokio::runtime::block_on。
     pub async fn per_slot_task(self: &Arc<Self>) {
         if let Some(slot) = self.slot_clock.now() {
             debug!(
                 self.log,
+                // 在每个slot tasks运行beacon chain
                 "Running beacon chain per slot tasks";
                 "slot" => ?slot
             );
 
             // Always run the light-weight pruning tasks (these structures should be empty during
             // sync anyway).
+            // 总是运行轻量的修剪任务（这些结构在同步期间应该是空的）。
             self.naive_aggregation_pool.write().prune(slot);
             self.block_times_cache.write().prune(slot);
 
             // Don't run heavy-weight tasks during sync.
+            // 在同步期间不要运行重量级任务。
             if self.best_slot() + MAX_PER_SLOT_FORK_CHOICE_DISTANCE < slot {
                 return;
             }
 
             // Run fork choice and signal to any waiting task that it has completed.
+            // 运行fork choice并且向任何等待的任务发出信号表明它已经完成。
             self.recompute_head_at_current_slot().await;
 
             // Send the notification regardless of fork choice success, this is a "best effort"
             // notification and we don't want block production to hit the timeout in case of error.
             // Use a blocking task to avoid blocking the core executor whilst waiting for locks
             // in `ForkChoiceSignalTx`.
+            // 发送通知，无论fork choice是否成功，这是一个“尽力而为”的通知，
+            // 我们不会希望在出现错误的情况下，block production超时，在发生错误的时候
+            // 使用阻塞任务来避免在等待锁时阻塞核心执行器中的锁
             let chain = self.clone();
             self.task_executor.clone().spawn_blocking(
                 move || {
                     // Signal block proposal for the next slot (if it happens to be waiting).
+                    // 通知下一个slot的block proposal（如果它恰好在等待）。
                     if let Some(tx) = &chain.fork_choice_signal_tx {
                         if let Err(e) = tx.notify_fork_choice_complete(slot) {
                             warn!(
@@ -5691,9 +5731,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Dumps the entire canonical chain, from the head to genesis to a vector for analysis.
+    /// Dumps整个canonical chain，从head到genesis到一个vector进行分析。
     ///
     /// This could be a very expensive operation and should only be done in testing/analysis
     /// activities.
+    /// 这是一个非常昂贵的操作并且应该只在测试/分析活动中完成。
     #[allow(clippy::type_complexity)]
     pub fn chain_dump(
         &self,
@@ -5772,11 +5814,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// This method serves to get a sense of the current chain health. It is used in block proposal
     /// to determine whether we should outsource payload production duties.
+    /// 这个方法用于了解当前链的健康状况。它用于block proposal，以确定我们是否应该外包有效载荷生产职责。
     ///
     /// Since we are likely calling this during the slot we are going to propose in, don't take into
     /// account the current slot when accounting for skips.
+    /// 因为我们可能在我们要提出的时候调用这个，所以在考虑跳过时不要考虑当前的slot。
     pub fn is_healthy(&self, parent_root: &Hash256) -> Result<ChainHealth, Error> {
         // Check if the merge has been finalized.
+        // 检查merge是否已经被finalized
         if let Some(finalized_hash) = self
             .canonical_head
             .cached_head()
@@ -5791,12 +5836,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         };
 
         // Check that the parent is NOT optimistic.
+        // 检查parent不是optimistic
         if let Some(execution_status) = self
             .canonical_head
             .fork_choice_read_lock()
             .get_block_execution_status(parent_root)
         {
             if execution_status.is_strictly_optimistic() {
+                // 状态是optimistic
                 return Ok(ChainHealth::Optimistic);
             }
         }
@@ -5808,11 +5855,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let current_slot = self.slot()?;
 
         // Check slots at the head of the chain.
+        // 检查slots在当前的head of the chain
         let prev_slot = current_slot.saturating_sub(Slot::new(1));
         let head_skips = prev_slot.saturating_sub(self.canonical_head.cached_head().head_slot());
         let head_skips_check = head_skips.as_usize() <= self.config.builder_fallback_skips;
 
         // Check if finalization is advancing.
+        // 检查finalization是否在前进
         let current_epoch = current_slot.epoch(T::EthSpec::slots_per_epoch());
         let epochs_since_finalization = current_epoch.saturating_sub(
             self.canonical_head
@@ -5824,6 +5873,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             <= self.config.builder_fallback_epochs_since_finalization;
 
         // Check skip slots in the last `SLOTS_PER_EPOCH`.
+        // 检查slots，在上一个SLOTS_PER_EPOCH中跳过
         let start_slot = current_slot.saturating_sub(T::EthSpec::slots_per_epoch());
         let mut epoch_skips = 0;
         for slot in start_slot.as_u64()..current_slot.as_u64() {

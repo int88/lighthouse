@@ -41,11 +41,13 @@ pub enum ExecutionStatus {
     Optimistic(ExecutionBlockHash),
     /// The block is either prior to the merge fork, or after the merge fork but before the terminal
     /// PoW block has been found.
+    /// 这个block要么在merge fork之前，要么在merge fork之后，但是在terminal PoW block被找到之前。
     ///
     /// # Note:
     ///
     /// This `bool` only exists to satisfy our SSZ implementation which requires all variants
     /// to have a value. It can be set to anything.
+    /// 这个`bool`只是为了满足我们的SSZ实现，它要求所有的变体都有一个值。它可以被设置为任何值。
     Irrelevant(bool),
 }
 
@@ -94,9 +96,12 @@ impl ExecutionStatus {
     }
 
     /// Returns `true` if the block:
+    /// 返回`true`，如果block:
     ///
     /// - Has execution enabled, AND
+    /// - 有execution enabled并且
     /// - Has a payload that has not yet been verified by an EL.
+    /// - 有一个payload还没有被EL校验
     pub fn is_strictly_optimistic(&self) -> bool {
         matches!(self, ExecutionStatus::Optimistic(_))
     }

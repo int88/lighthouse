@@ -1,12 +1,16 @@
 //! Provides a timer which runs in the tail-end of each slot and maybe advances the state of the
 //! head block forward a single slot.
+//! 提供一个timer，运行在每个slot的尾部，可能将head block的state向前移动一个slot
 //!
 //! This provides an optimization with the following benefits:
+//! 提供了一个优化，有以下好处
 //!
 //! 1. Removes the burden of a single, mandatory `per_slot_processing` call from the leading-edge of
 //!    block processing. This helps import blocks faster.
+//! 1. 移除了leading-edge的block processing中单个的，必须的`per_slot_processing`调用的负担。这有助于更快地导入blocks
 //! 2. Allows the node to learn of the shuffling for the next epoch, before the first block from
 //!    that epoch has arrived. This helps reduce gossip block propagation times.
+//! 2. 允许节点在下一个epoch的第一个block到达之前，了解下一个epoch的shuffling。这有助于减少gossip block的传播时间
 //!
 //! The downsides to this optimization are:
 //!
@@ -163,6 +167,7 @@ async fn state_advance_timer<T: BeaconChainTypes>(
         };
 
         // Only spawn the state advance task if the lock was previously free.
+        // 只有当lock之前是free的时候，才会spawn state advance task
         if !is_running.lock() {
             let log = log.clone();
             let beacon_chain = beacon_chain.clone();
@@ -227,10 +232,12 @@ async fn state_advance_timer<T: BeaconChainTypes>(
                 }
 
                 // Re-compute the head, dequeuing attestations for the current slot early.
+                // 重新计算head，提前出队当前slot的attestations
                 beacon_chain.recompute_head_at_slot(next_slot).await;
 
                 // Prepare proposers so that the node can send payload attributes in the case where
                 // it decides to abandon a proposer boost re-org.
+                // 准备proposers，这样节点可以发送payload attributes，以防它决定放弃proposer boost re-org
                 if let Err(e) = beacon_chain.prepare_beacon_proposer(current_slot).await {
                     warn!(
                         log,
