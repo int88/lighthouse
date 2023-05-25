@@ -145,8 +145,10 @@ pub const FORK_CHOICE_DB_KEY: Hash256 = Hash256::zero();
 const EARLY_ATTESTER_CACHE_HISTORIC_SLOTS: u64 = 4;
 
 /// Defines a distance between the head block slot and the current slot.
+/// 定义head block slot和当前slot之间的距离
 ///
 /// If the head block is older than this value, don't bother preparing beacon proposers.
+/// 如果head block比这个值旧，就不要准备beacon proposers了
 const PREPARE_PROPOSER_HISTORIC_EPOCHS: u64 = 4;
 
 /// If the head is more than `MAX_PER_SLOT_FORK_CHOICE_DISTANCE` slots behind the wall-clock slot, DO NOT
@@ -217,6 +219,7 @@ pub enum OverrideForkchoiceUpdate {
 }
 
 /// The accepted clock drift for nodes gossiping blocks and attestations. See:
+/// 能够接受的时钟漂移，用于节点传播blocks和attestations
 ///
 /// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/p2p-interface.md#configuration
 pub const MAXIMUM_GOSSIP_CLOCK_DISPARITY: Duration = Duration::from_millis(500);
@@ -3928,6 +3931,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ///
     /// The `proposer_head` may be the head block of `cached_head` or its parent. An error will
     /// be returned for any other value.
+    /// `proposer_head`可能是`cached_head`的head block或者它的parent，对于其他值会返回一个error
     pub fn get_pre_payload_attributes(
         &self,
         proposal_slot: Slot,
@@ -3937,6 +3941,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let proposal_epoch = proposal_slot.epoch(T::EthSpec::slots_per_epoch());
 
         let head_block_root = cached_head.head_block_root();
+        // 获取parent block root
         let parent_block_root = cached_head.parent_block_root();
 
         // The proposer head must be equal to the canonical head or its parent.
@@ -3944,6 +3949,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         if proposer_head != head_block_root && proposer_head != parent_block_root {
             warn!(
                 self.log,
+                // 不能计算payload attributes
                 "Unable to compute payload attributes";
                 "block_root" => ?proposer_head,
                 "head_block_root" => ?head_block_root,
@@ -3955,6 +3961,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // 计算proposer index
         let head_epoch = cached_head.head_slot().epoch(T::EthSpec::slots_per_epoch());
         let shuffling_decision_root = if head_epoch == proposal_epoch {
+            // 如果是当前的epoch，使用cached_head的snapshot
             cached_head
                 .snapshot
                 .beacon_state
@@ -3983,16 +3990,20 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
                 // Don't skip the head forward more than two epochs. This avoids burdening an
                 // unhealthy node.
+                // 不要跳过head超过两个epoch，这样可以避免给一个不健康的节点带来负担
                 //
                 // Although this node might miss out on preparing for a proposal, they should still
                 // be able to propose. This will prioritise beacon chain health over efficient
                 // packing of execution blocks.
+                // 尽管这个节点可能会错过准备一个proposal，但是他们仍然可以提出proposal，这将优先考虑beacon chain的健康，而不是有效的打包execution blocks
                 return Ok(None);
             }
 
             let (proposers, decision_root, _, fork) =
+                // 计算proposer duties
                 compute_proposer_duties_from_head(proposal_epoch, self)?;
 
+            // 计算proposer offset
             let proposer_offset = (proposal_slot % T::EthSpec::slots_per_epoch()).as_usize();
             let proposer = *proposers
                 .get(proposer_offset)
@@ -4021,6 +4032,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 return Ok(None);
             }
 
+            // 返回proposer index
             proposer as u64
         };
 
@@ -4415,6 +4427,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         let pubkey = state
             .validators()
+            // 获取对应的validator的pubkey
             .get(proposer_index as usize)
             .map(|v| v.pubkey)
             .ok_or(BlockProductionError::BeaconChain(
@@ -4909,6 +4922,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let prepare_slot = current_slot + 1;
 
         // There's no need to run the proposer preparation routine before the bellatrix fork.
+        // 没有必要运行bellatrix fork之前的proposer preparation routine。
         if self.slot_is_prior_to_bellatrix(prepare_slot) {
             return Ok(());
         }
@@ -4920,6 +4934,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Nothing to do if there are no proposers registered with the EL, exit early to avoid
         // wasting cycles.
+        // 如果EL没有注册任何proposer，则无需执行任何操作，提前退出以避免浪费周期。
         if !self.config.always_prepare_payload
             && !execution_layer.has_any_proposer_preparation_data().await
         {
@@ -4927,9 +4942,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Load the cached head and its forkchoice update parameters.
+        // 加载cached head及其forkchoice update参数。
         //
         // Use a blocking task since blocking the core executor on the canonical head read lock can
         // block the core tokio executor.
+        // 使用一个阻塞任务，因为阻塞核心执行器对规范头读锁可以阻塞核心tokio执行器。
         let chain = self.clone();
         let maybe_prep_data = self
             .spawn_blocking_handle(
@@ -4938,14 +4955,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
                     // Don't bother with proposer prep if the head is more than
                     // `PREPARE_PROPOSER_HISTORIC_EPOCHS` prior to the current slot.
+                    // 不要在head比当前slot早`PREPARE_PROPOSER_HISTORIC_EPOCHS`以上时打扰proposer prep。
                     //
                     // This prevents the routine from running during sync.
+                    // 这防止了在同步期间运行该例程。
                     let head_slot = cached_head.head_slot();
                     if head_slot + T::EthSpec::slots_per_epoch() * PREPARE_PROPOSER_HISTORIC_EPOCHS
                         < current_slot
                     {
                         debug!(
                             chain.log,
+                            // 对于proposer prep，head太旧了
                             "Head too old for proposer prep";
                             "head_slot" => head_slot,
                             "current_slot" => current_slot,
@@ -4978,6 +4998,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // If the execution layer doesn't have any proposer data for this validator then we assume
         // it's not connected to this BN and no action is required.
+        // 如果execution layer没有该验证器的任何proposer数据，那么我们假设它没有连接到该BN，不需要采取任何操作。
         let proposer = pre_payload_attributes.proposer_index;
         if !self.config.always_prepare_payload
             && !execution_layer
@@ -4990,6 +5011,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Fetch payoad attributes from the execution layer's cache, or compute them from scratch
         // if no matching entry is found. This saves recomputing the withdrawals which can take
         // considerable time to compute if a state load is required.
+        // 从execution layer的cache中获取payoad attributes，如果没有找到匹配的条目，则从头开始计算。
+        // 这样可以节省重新计算提款的时间，如果需要加载状态，这可能需要花费相当长的时间。
         let head_root = forkchoice_update_params.head_root;
         let payload_attributes = if let Some(payload_attributes) = execution_layer
             .payload_attributes(prepare_slot, head_root)
@@ -5044,6 +5067,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         };
 
         // Push a server-sent event (probably to a block builder or relay).
+        // 推送一个服务器发送的事件（可能是到一个块构建器或中继）。
         if let Some(event_handler) = &self.event_handler {
             if event_handler.has_payload_attributes_subscribers() {
                 event_handler.register(EventKind::PayloadAttributes(ForkVersionedResponse {
@@ -5080,11 +5104,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // If we are close enough to the proposal slot, send an fcU, which will have payload
         // attributes filled in by the execution layer cache we just primed.
+        // 如果我们接近proposal slot，发送一个fcU，其中将有刚刚填充的执行层缓存的有效负载属性。
         if self.config.always_prepare_payload
             || till_prepare_slot <= self.config.prepare_payload_lookahead
         {
             debug!(
                 self.log,
+                // 发送forkchoiceUpdate以准备提议
                 "Sending forkchoiceUpdate for proposer prep";
                 "till_prepare_slot" => ?till_prepare_slot,
                 "prepare_slot" => prepare_slot

@@ -178,10 +178,12 @@ pub enum BlockError<T: EthSpec> {
     /// imported.
     NotFinalizedDescendant { block_parent_root: Hash256 },
     /// Block is already known, no need to re-import.
+    /// Block已经知道了，不需要再次导入。
     ///
     /// ## Peer scoring
     ///
     /// The block is valid and we have already imported a block with this hash.
+    /// 这个block是合法的，我们已经导入了一个具有这个hash的block。
     BlockIsAlreadyKnown,
     /// A block for this proposer and slot has already been observed.
     ///
@@ -672,8 +674,10 @@ pub trait IntoExecutionPendingBlock<T: BeaconChainTypes>: Sized {
 impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
     /// Instantiates `Self`, a wrapper that indicates the given `block` is safe to be re-gossiped
     /// on the p2p network.
+    /// 实例化`Self`，一个wrapper，表明给定的`block`是安全的，可以在p2p网络上重新gossip
     ///
     /// Returns an error if the block is invalid, or if the block was unable to be verified.
+    /// 返回一个error，如果block是非法的，或者如果block无法被验证
     pub fn new(
         block: Arc<SignedBeaconBlock<T::EthSpec>>,
         chain: &BeaconChain<T>,
@@ -682,6 +686,8 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
         // we assume it will be transformed into a fully verified block. We *do* need to supply
         // it to the slasher if an error occurs, because that's the end of this block's journey,
         // and it could be a repeat proposal (a likely cause for slashing!).
+        // 如果block是合法的对于gossip，我们不会在这里提供它给slasher，因为我们假设它将被转换成一个完全验证的block
+        // 我们需要提供它给slasher，如果发生错误，因为这是这个block的旅程的结束，它可能是一个重复的proposal(一个可能导致slashing的原因)
         let header = block.signed_block_header();
         Self::new_without_slasher_checks(block, chain).map_err(|e| {
             process_block_slash_info(chain, BlockSlashInfo::from_early_error(header, e))
@@ -689,16 +695,19 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
     }
 
     /// As for new, but doesn't pass the block to the slasher.
+    /// 和new类似，但是不会把block传递给slasher
     fn new_without_slasher_checks(
         block: Arc<SignedBeaconBlock<T::EthSpec>>,
         chain: &BeaconChain<T>,
     ) -> Result<Self, BlockError<T::EthSpec>> {
         // Ensure the block is the correct structure for the fork at `block.slot()`.
+        // 确保block是`block.slot()`的fork的正确结构
         block
             .fork_name(&chain.spec)
             .map_err(BlockError::InconsistentFork)?;
 
         // Do not gossip or process blocks from future slots.
+        // 不要gossip或者处理来自未来slot的blocks
         let present_slot_with_tolerance = chain
             .slot_clock
             .now_with_future_tolerance(MAXIMUM_GOSSIP_CLOCK_DISPARITY)
@@ -713,18 +722,23 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
         let block_root = get_block_root(&block);
 
         // Disallow blocks that conflict with the anchor (weak subjectivity checkpoint), if any.
+        // 不允许与锚点(弱主观性检查点)冲突的blocks，如果有的话
         check_block_against_anchor_slot(block.message(), chain)?;
 
         // Do not gossip a block from a finalized slot.
+        // 不要gossip一个来自finalized slot的block
         check_block_against_finalized_slot(block.message(), block_root, chain)?;
 
         // Check if the block is already known. We know it is post-finalization, so it is
         // sufficient to check the fork choice.
+        // 检查是否block已经被知道了，我们知道它是post-finalization，所以检查fork choice就足够了
         //
         // In normal operation this isn't necessary, however it is useful immediately after a
         // reboot if the `observed_block_producers` cache is empty. In that case, without this
         // check, we will load the parent and state from disk only to find out later that we
         // already know this block.
+        // 在正常操作中，这是不必要的，但是在reboot之后，如果`observed_block_producers` cache是空的，这是非常有用的
+        // 在这种情况下，如果没有这个检查，我们将只从磁盘加载parent和state，以后才发现我们已经知道这个block了
         if chain
             .canonical_head
             .fork_choice_read_lock()
@@ -734,6 +748,7 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
         }
 
         // Check that we have not already received a block with a valid signature for this slot.
+        // 检查我们是否已经收到了一个带有这个slot的有效签名的block
         if chain
             .observed_block_producers
             .read()
@@ -747,8 +762,10 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
         }
 
         // Do not process a block that doesn't descend from the finalized root.
+        // 不要处理一个block，它不是从finalized root下降的
         //
         // We check this *before* we load the parent so that we can return a more detailed error.
+        // 我们在加载parent之前检查这个，这样我们就可以返回一个更详细的错误
         check_block_is_finalized_checkpoint_or_descendant(
             chain,
             &chain.canonical_head.fork_choice_write_lock(),
@@ -759,6 +776,7 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
         let (parent_block, block) = verify_parent_block_is_known(chain, block)?;
 
         // Track the number of skip slots between the block and its parent.
+        // 追踪block和它的parent之间的skip slots的数量
         metrics::set_gauge(
             &metrics::GOSSIP_BEACON_BLOCK_SKIPPED_SLOTS,
             block
@@ -769,6 +787,7 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
         );
 
         // Paranoid check to prevent propagation of blocks that don't form a legitimate chain.
+        // paranoid check来防止传播不形成合法链的blocks
         //
         // This is not in the spec, but @protolambda tells me that the majority of other clients are
         // already doing it. For reference:
@@ -791,10 +810,13 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
             };
 
         // Reject any block that exceeds our limit on skipped slots.
+        // 拒绝任何block，它超过了我们对skip slots的限制
         check_block_skip_slots(chain, parent_block.slot, block.message())?;
 
         // We assign to a variable instead of using `if let Some` directly to ensure we drop the
         // write lock before trying to acquire it again in the `else` clause.
+        // 我们分配给一个变量，而不是直接使用`if let Some`，以确保我们在`else`子句中再次获取写锁之前，我们放弃写锁
+        // 从而避免死锁
         let proposer_opt = chain
             .beacon_proposer_cache
             .lock()
@@ -807,6 +829,7 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
         } else {
             // The proposer index was *not* cached and we must load the parent in order to determine
             // the proposer index.
+            // proposer index没有缓存，我们必须加载parent来确定proposer index
             let (mut parent, block) = load_parent(block_root, block, chain)?;
 
             debug!(
@@ -819,6 +842,7 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
             );
 
             // The state produced is only valid for determining proposer/attester shuffling indices.
+            // 生成的state只能用于确定proposer/attester shuffling indices
             let state = cheap_state_advance_to_obtain_committees(
                 &mut parent.pre_state,
                 parent.beacon_state_root,

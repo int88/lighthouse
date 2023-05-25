@@ -739,6 +739,7 @@ impl ProtoArrayForkChoice {
     }
 
     /// Returns the `block.execution_status` field, if the block is present.
+    /// 返回`block.execution_status`字段，如果块存在。
     pub fn get_block_execution_status(&self, block_root: &Hash256) -> Option<ExecutionStatus> {
         let block = self.get_proto_node(block_root)?;
         Some(block.execution_status)

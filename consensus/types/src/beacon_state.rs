@@ -622,6 +622,7 @@ impl<T: EthSpec> BeaconState<T> {
     /// shuffling. It should be set to the latest block applied to `self` or the genesis block root.
     /// 这个`block_root`覆盖了一次性的场景，genesis block决定了自己的shuffling。它应该设置为最新的block，或者genesis block root
     pub fn proposer_shuffling_decision_root(&self, block_root: Hash256) -> Result<Hash256, Error> {
+        // 获取desision slot
         let decision_slot = self.proposer_shuffling_decision_slot();
         if self.slot() == decision_slot {
             Ok(block_root)
@@ -637,6 +638,7 @@ impl<T: EthSpec> BeaconState<T> {
     fn proposer_shuffling_decision_slot(&self) -> Slot {
         self.current_epoch()
             .start_slot(T::slots_per_epoch())
+            // epoch的start slot -1?
             .saturating_sub(1_u64)
     }
 
@@ -681,11 +683,13 @@ impl<T: EthSpec> BeaconState<T> {
         spec: &ChainSpec,
     ) -> Result<usize, Error> {
         if indices.is_empty() {
+            // validator数目不够
             return Err(Error::InsufficientValidators);
         }
 
         let mut i = 0;
         loop {
+            // 计算shuffle index
             let shuffled_index = compute_shuffled_index(
                 i.safe_rem(indices.len())?,
                 indices.len(),
@@ -703,6 +707,7 @@ impl<T: EthSpec> BeaconState<T> {
                     .max_effective_balance
                     .safe_mul(u64::from(random_byte))?
             {
+                // 返回candidate index
                 return Ok(candidate_index);
             }
             i.safe_add_assign(1)?;
@@ -810,6 +815,7 @@ impl<T: EthSpec> BeaconState<T> {
         self.current_epoch()
             .slot_iter(T::slots_per_epoch())
             .map(|slot| {
+                // 根据slot计算seed
                 let seed = self.get_beacon_proposer_seed(slot, spec)?;
                 // 计算proposer index
                 self.compute_proposer_index(&indices, &seed, spec)

@@ -31,6 +31,7 @@ const TYPICAL_SLOTS_PER_EPOCH: usize = 32;
 
 /// For some given slot, this contains the proposer index (`index`) and the `fork` that should be
 /// used to verify their signature.
+/// 对于一些给定的slot，它包含proposer index（`index`）和应该用来验证他们签名的`fork`
 pub struct Proposer {
     pub index: usize,
     pub fork: Fork,
@@ -75,17 +76,19 @@ impl BeaconProposerCache {
     /// If it is cached, returns the proposer for the block at `slot` where the block has the
     /// ancestor block root of `shuffling_decision_block` at `end_slot(slot.epoch() - 1)`.
     /// 如果被缓存了，返回在`slot`的block的proposer，其中block有ancestor root，在`shuffling_decision_block`
-    /// 在`end_slot(slot.epoch() - 1)`
+    /// 在`end_slot(slot.epoch() - 1)`，上一个epocoh的end slot
     pub fn get_slot<T: EthSpec>(
         &mut self,
         shuffling_decision_block: Hash256,
         slot: Slot,
     ) -> Option<Proposer> {
+        // 获取slot对应的epoch
         let epoch = slot.epoch(T::slots_per_epoch());
         let key = (epoch, shuffling_decision_block);
         // 从cache中查找
         if let Some(cache) = self.cache.get(&key) {
             // This `if` statement is likely unnecessary, but it feels like good practice.
+            // 这个`if`语句可能是不必要的，但是感觉像是好的实践
             if epoch == cache.epoch {
                 cache
                     .proposers
@@ -129,10 +132,12 @@ impl BeaconProposerCache {
         proposers: Vec<usize>,
         fork: Fork,
     ) -> Result<(), BeaconStateError> {
+        // epoch和shuffling_decision_block作为key
         let key = (epoch, shuffling_decision_block);
         if !self.cache.contains(&key) {
             self.cache.put(
                 key,
+                // 插入epoch和fork
                 EpochBlockProposers {
                     epoch,
                     fork,
@@ -177,6 +182,7 @@ pub fn compute_proposer_duties_from_head<T: BeaconChainTypes>(
     // 移动state到请求的epoch
     ensure_state_is_in_epoch(&mut state, head_state_root, current_epoch, &chain.spec)?;
 
+    // 获取beacon proposer indices
     let indices = state
         .get_beacon_proposer_indices(&chain.spec)
         .map_err(BeaconChainError::from)?;
@@ -210,14 +216,17 @@ pub fn ensure_state_is_in_epoch<E: EthSpec>(
 ) -> Result<(), BeaconChainError> {
     match state.current_epoch().cmp(&target_epoch) {
         // Protects against an inconsistent slot clock.
+        // 保护不一致的slot clock
         Ordering::Greater => Err(BeaconStateError::SlotOutOfBounds.into()),
         // The state needs to be advanced.
+        // state需要移动
         Ordering::Less => {
             let target_slot = target_epoch.start_slot(E::slots_per_epoch());
             partial_state_advance(state, Some(state_root), target_slot, spec)
                 .map_err(BeaconChainError::from)
         }
         // The state is suitable, nothing to do.
+        // state是合适的，什么都不做
         Ordering::Equal => Ok(()),
     }
 }

@@ -1291,8 +1291,10 @@ where
     }
 
     /// Returns an `ExecutionStatus` if the block is known **and** a descendant of the finalized root.
+    /// 返回一个`ExecutionStatus`如果这个block是已知的**and**一个finalized root的descendant
     pub fn get_block_execution_status(&self, block_root: &Hash256) -> Option<ExecutionStatus> {
         if self.is_finalized_checkpoint_or_descendant(*block_root) {
+            // 是finalized checkpoint或者是它的descendant
             self.proto_array.get_block_execution_status(block_root)
         } else {
             None

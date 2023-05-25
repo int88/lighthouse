@@ -17,15 +17,18 @@ pub enum Error {
 
 /// Advances the `state` to the given `target_slot`, assuming that there were no blocks between
 /// these slots.
+/// 移动到给定的`target_slot`，假设在这些slots之间没有blocks
 ///
 /// ## Errors
 ///
 /// - If `state.slot > target_slot`, an error will be returned.
+/// - 如果`state.slot > target_slot`，返回一个error
 ///
 /// ## Notes
 ///
 /// This state advance method is "complete"; it outputs a perfectly valid `BeaconState` and doesn't
 /// do anything hacky like the "partial" method (see `partial_state_advance`).
+/// 这个state advance方法是"complete"；它输出一个完美有效的`BeaconState`，并且不会做任何hacky的事情，比如"partial"方法（参见`partial_state_advance`）
 pub fn complete_state_advance<T: EthSpec>(
     state: &mut BeaconState<T>,
     mut state_root_opt: Option<Hash256>,
@@ -37,6 +40,7 @@ pub fn complete_state_advance<T: EthSpec>(
     while state.slot() < target_slot {
         // Use the initial state root on the first iteration of the loop, then use `None`  for any
         // future iterations.
+        // 使用initial state root在循环的第一次迭代中，然后使用`None`在任何未来的迭代中
         let state_root_opt = state_root_opt.take();
 
         per_slot_processing(state, state_root_opt, spec).map_err(Error::PerSlotProcessing)?;

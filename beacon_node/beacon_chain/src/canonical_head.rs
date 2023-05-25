@@ -1271,16 +1271,20 @@ fn spawn_execution_layer_updates<T: BeaconChainTypes>(
                 }
 
                 // Update the mechanism for preparing for block production on the execution layer.
+                // 更新执行层块生产的机制。
                 //
                 // Performing this call immediately after `update_execution_engine_forkchoice_blocking`
                 // might result in two calls to fork choice updated, one *without* payload attributes and
                 // then a second *with* payload attributes.
+                // 立即执行`update_execution_engine_forkchoice_blocking`后执行此调用可能会导致两次调用fork choice更新，一次*没有*有效载荷属性，然后是第二次*有*有效载荷属性。
                 //
                 // This seems OK. It's not a significant waste of EL<>CL bandwidth or resources, as far as I
                 // know.
+                // 这看起来没问题。据我所知，这不是EL<>CL带宽或资源的重大浪费。
                 if let Err(e) = chain.prepare_beacon_proposer(current_slot).await {
                     crit!(
                         chain.log,
+                        // 对于`prepare_beacon_proposer`的错误，我们不会关闭节点。
                         "Failed to prepare proposers after fork choice";
                         "error" => ?e
                     );

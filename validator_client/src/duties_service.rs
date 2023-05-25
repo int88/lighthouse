@@ -199,13 +199,16 @@ impl<T: SlotClock + 'static, E: EthSpec> DutiesService<T, E> {
     }
 
     /// Returns the pubkeys of the validators which are assigned to propose in the given slot.
+    /// 返回validators的pubkeys，用于赋值在给定的slot中propose
     ///
     /// It is possible that multiple validators have an identical proposal slot, however that is
     /// likely the result of heavy forking (lol) or inconsistent beacon node connections.
+    /// 可能有多个validators有相同的proposal slot，但是这可能是重度分叉的结果(lol)或者不一致的beacon node连接的结果。
     pub fn block_proposers(&self, slot: Slot) -> HashSet<PublicKeyBytes> {
         let epoch = slot.epoch(E::slots_per_epoch());
 
         // Only collect validators that are considered safe in terms of doppelganger protection.
+        // 只收集在doppelganger保护方面被认为是安全的validators。
         let signing_pubkeys: HashSet<_> = self
             .validator_store
             .voting_pubkeys(DoppelgangerStatus::only_safe);
@@ -227,6 +230,7 @@ impl<T: SlotClock + 'static, E: EthSpec> DutiesService<T, E> {
     }
 
     /// Returns all `ValidatorDuty` for the given `slot`.
+    /// 返回所有的`ValidatorDuty`给定的`slot`
     pub fn attesters(&self, slot: Slot) -> Vec<DutyAndProof> {
         let epoch = slot.epoch(E::slots_per_epoch());
 
@@ -257,6 +261,7 @@ impl<T: SlotClock + 'static, E: EthSpec> DutiesService<T, E> {
 
 /// Start the service that periodically polls the beacon node for validator duties. This will start
 /// several sub-services.
+/// 启动service，定期轮询beacon node的validator duties。这将启动几个子服务。
 ///
 /// ## Notes
 ///
@@ -266,12 +271,17 @@ impl<T: SlotClock + 'static, E: EthSpec> DutiesService<T, E> {
 /// process every slot, which has the chance of creating a theoretically unlimited backlog of tasks.
 /// It was a conscious decision to choose to drop tasks on an overloaded/latent system rather than
 /// overload it even more.
+/// 这个函数中的循环结构是这样的，只有在当前的任务完成后，才会启动该任务的新实例。
+/// 这意味着，如果一个任务运行的时间超过一个slot，我们可能会跳过一个slot。
+/// 这是不幸的，但是另一种选择是*总是*处理每一个slot，这有可能创建一个理论上无限的任务积压。
+/// 这是一个有意识的决定，选择在一个过载/潜在的系统上丢弃任务，而不是更加过载它。
 pub fn start_update_service<T: SlotClock + 'static, E: EthSpec>(
     core_duties_service: Arc<DutiesService<T, E>>,
     mut block_service_tx: Sender<BlockServiceNotification>,
 ) {
     /*
      * Spawn the task which updates the map of pubkey to validator index.
+     * 生成task，更新pubkey到validator index的map。
      */
     let duties_service = core_duties_service.clone();
     core_duties_service.context.executor.spawn(
@@ -279,6 +289,7 @@ pub fn start_update_service<T: SlotClock + 'static, E: EthSpec>(
             loop {
                 // Run this poll before the wait, this should hopefully download all the indices
                 // before the block/attestation tasks need them.
+                // 在等待之前运行这个poll，这应该会在block/attestation任务需要它们之前下载所有的indices。
                 poll_validator_indices(&duties_service).await;
 
                 if let Some(duration) = duties_service.slot_clock.duration_to_next_slot() {
@@ -286,6 +297,7 @@ pub fn start_update_service<T: SlotClock + 'static, E: EthSpec>(
                 } else {
                     // Just sleep for one slot if we are unable to read the system clock, this gives
                     // us an opportunity for the clock to eventually come good.
+                    // 就在我们无法读取系统时钟时睡眠一个slot，这给了我们一个机会，时钟最终会变好。
                     sleep(duties_service.slot_clock.slot_duration()).await;
                 }
             }
@@ -295,6 +307,7 @@ pub fn start_update_service<T: SlotClock + 'static, E: EthSpec>(
 
     /*
      * Spawn the task which keeps track of local block proposal duties.
+     * 生成一个task，跟踪本地block proposal duties。
      */
     let duties_service = core_duties_service.clone();
     let log = core_duties_service.context.log().clone();
@@ -306,10 +319,12 @@ pub fn start_update_service<T: SlotClock + 'static, E: EthSpec>(
                 } else {
                     // Just sleep for one slot if we are unable to read the system clock, this gives
                     // us an opportunity for the clock to eventually come good.
+                    // 就在我们无法读取系统时钟时睡眠一个slot，这给了我们一个机会，时钟最终会变好。
                     sleep(duties_service.slot_clock.slot_duration()).await;
                     continue;
                 }
 
+                // 拉取beacon proposers
                 if let Err(e) = poll_beacon_proposers(&duties_service, &mut block_service_tx).await
                 {
                     error!(
@@ -325,6 +340,7 @@ pub fn start_update_service<T: SlotClock + 'static, E: EthSpec>(
 
     /*
      * Spawn the task which keeps track of local attestation duties.
+     * 生成一个task，跟踪本地attestation duties。
      */
     let duties_service = core_duties_service.clone();
     let log = core_duties_service.context.log().clone();
@@ -340,6 +356,7 @@ pub fn start_update_service<T: SlotClock + 'static, E: EthSpec>(
                     continue;
                 }
 
+                // 拉取beacon attesters
                 if let Err(e) = poll_beacon_attesters(&duties_service).await {
                     error!(
                        log,
@@ -353,6 +370,7 @@ pub fn start_update_service<T: SlotClock + 'static, E: EthSpec>(
     );
 
     // Spawn the task which keeps track of local sync committee duties.
+    // 生成task，跟踪本地sync committee duties。
     let duties_service = core_duties_service.clone();
     let log = core_duties_service.context.log().clone();
     core_duties_service.context.executor.spawn(
@@ -367,6 +385,7 @@ pub fn start_update_service<T: SlotClock + 'static, E: EthSpec>(
                 }
 
                 // Wait until the next slot before polling again.
+                // 等待直到下一个slot再次轮询。
                 // This doesn't mean that the beacon node will get polled every slot
                 // as the sync duties service will return early if it deems it already has
                 // enough information.
@@ -386,6 +405,7 @@ pub fn start_update_service<T: SlotClock + 'static, E: EthSpec>(
 
 /// Iterate through all the voting pubkeys in the `ValidatorStore` and attempt to learn any unknown
 /// validator indices.
+/// 遍历`ValidatorStore`中的所有投票pubkeys，并尝试了解任何未知的验证器索引。
 async fn poll_validator_indices<T: SlotClock + 'static, E: EthSpec>(
     duties_service: &DutiesService<T, E>,
 ) {
@@ -395,9 +415,11 @@ async fn poll_validator_indices<T: SlotClock + 'static, E: EthSpec>(
     let log = duties_service.context.log();
 
     // Collect *all* pubkeys for resolving indices, even those undergoing doppelganger protection.
+    // 收集*所有*pubkeys以解析索引，即使那些正在进行doppelganger保护的pubkeys。
     //
     // Since doppelganger protection queries rely on validator indices it is important to ensure we
     // collect those indices.
+    // 由于doppelganger保护查询依赖于验证器索引，因此确保我们收集这些索引非常重要。
     let all_pubkeys: Vec<_> = duties_service
         .validator_store
         .voting_pubkeys(DoppelgangerStatus::ignored);
@@ -413,6 +435,7 @@ async fn poll_validator_indices<T: SlotClock + 'static, E: EthSpec>(
 
         if !is_known {
             // Query the remote BN to resolve a pubkey to a validator index.
+            // 查询远程BN以将pubkey解析为验证器索引。
             let download_result = duties_service
                 .beacon_nodes
                 .first_success(
@@ -459,6 +482,7 @@ async fn poll_validator_indices<T: SlotClock + 'static, E: EthSpec>(
                 }
                 // This is not necessarily an error, it just means the validator is not yet known to
                 // the beacon chain.
+                // 不一定是一个error，这只是意味着验证器还不知道beacon chain。
                 Ok(None) => {
                     debug!(
                         log,
@@ -483,13 +507,19 @@ async fn poll_validator_indices<T: SlotClock + 'static, E: EthSpec>(
 }
 
 /// Query the beacon node for attestation duties for any known validators.
+/// 查询beacon node以获取任何已知验证器的attestation职责。
 ///
 /// This function will perform (in the following order):
+/// 这个函数会执行(按以下顺序):
 ///
 /// 1. Poll for current-epoch duties and update the local `duties_service.attesters` map.
+/// 1. 轮询当前时期的职责并更新本地的`duties_service.attesters`映射。
 /// 2. As above, but for the next-epoch.
+/// 2. 如上所述，但是对于下一个时期。
 /// 3. Push out any attestation subnet subscriptions to the BN.
+/// 3. 将任何attestation子网订阅推送到BN。
 /// 4. Prune old entries from `duties_service.attesters`.
+/// 4. 从`duties_service.attesters`中删除旧条目。
 async fn poll_beacon_attesters<T: SlotClock + 'static, E: EthSpec>(
     duties_service: &Arc<DutiesService<T, E>>,
 ) -> Result<(), Error> {
@@ -529,6 +559,7 @@ async fn poll_beacon_attesters<T: SlotClock + 'static, E: EthSpec>(
     };
 
     // Download the duties and update the duties for the current epoch.
+    // 下载职责并更新当前时期的职责。
     if let Err(e) = poll_beacon_attesters_for_epoch(
         duties_service,
         current_epoch,
@@ -554,6 +585,7 @@ async fn poll_beacon_attesters<T: SlotClock + 'static, E: EthSpec>(
     );
 
     // Download the duties and update the duties for the next epoch.
+    // 下载职责并更新下一个时期的职责。
     if let Err(e) = poll_beacon_attesters_for_epoch(
         duties_service,
         next_epoch,
@@ -580,10 +612,12 @@ async fn poll_beacon_attesters<T: SlotClock + 'static, E: EthSpec>(
     let mut subscriptions = Vec::with_capacity(local_pubkeys.len() * 2);
 
     // For this epoch and the next epoch, produce any beacon committee subscriptions.
+    // 对于这个epoch和下一个epoch，生成任何beacon委员会订阅。
     //
     // We are *always* pushing out subscriptions, even if we've subscribed before. This is
     // potentially excessive on the BN in normal cases, but it will help with fast re-subscriptions
     // if the BN goes offline or we swap to a different one.
+    // 我们总是推出订阅，即使我们之前已经订阅过。在正常情况下，这在BN上可能过度，但是如果BN离线或我们切换到另一个BN，它将有助于快速重新订阅。
     for epoch in &[current_epoch, next_epoch] {
         duties_service
             .attesters
@@ -592,6 +626,7 @@ async fn poll_beacon_attesters<T: SlotClock + 'static, E: EthSpec>(
             .filter_map(|(_, map)| map.get(epoch))
             // The BN logs a warning if we try and subscribe to current or near-by slots. Give it a
             // buffer.
+            // BN会在我们尝试订阅当前或附近的插槽时记录警告。给它一个缓冲区。
             .filter(|(_, duty_and_proof)| {
                 current_slot + SUBSCRIPTION_BUFFER_SLOTS < duty_and_proof.duty.slot
             })
@@ -610,6 +645,7 @@ async fn poll_beacon_attesters<T: SlotClock + 'static, E: EthSpec>(
     }
 
     // If there are any subscriptions, push them out to beacon nodes
+    // 如果有任何的订阅，将它们推送到beacon节点
     if !subscriptions.is_empty() {
         let subscriptions_ref = &subscriptions;
         if let Err(e) = duties_service
@@ -640,6 +676,7 @@ async fn poll_beacon_attesters<T: SlotClock + 'static, E: EthSpec>(
     drop(subscriptions_timer);
 
     // Prune old duties.
+    // 移除老的duties
     duties_service
         .attesters
         .write()
@@ -653,6 +690,7 @@ async fn poll_beacon_attesters<T: SlotClock + 'static, E: EthSpec>(
 
 /// For the given `local_indices` and `local_pubkeys`, download the duties for the given `epoch` and
 /// store them in `duties_service.attesters`.
+/// 对于给定的`local_indices`和`local_pubkeys`，下载给定`epoch`的职责并将它们存储在`duties_service.attesters`中。
 async fn poll_beacon_attesters_for_epoch<T: SlotClock + 'static, E: EthSpec>(
     duties_service: &Arc<DutiesService<T, E>>,
     epoch: Epoch,
@@ -663,6 +701,7 @@ async fn poll_beacon_attesters_for_epoch<T: SlotClock + 'static, E: EthSpec>(
     let log = duties_service.context.log();
 
     // No need to bother the BN if we don't have any validators.
+    // 如果没有任何验证器，就不需要打扰BN。
     if local_indices.is_empty() {
         debug!(
             duties_service.context.log(),
@@ -704,6 +743,7 @@ async fn poll_beacon_attesters_for_epoch<T: SlotClock + 'static, E: EthSpec>(
     let dependent_root = response.dependent_root;
 
     // Filter any duties that are not relevant or already known.
+    // 过滤掉不相关或已知的职责。
     let new_duties = {
         // Avoid holding the read-lock for any longer than required.
         let attesters = duties_service.attesters.read();
@@ -763,6 +803,7 @@ async fn poll_beacon_attesters_for_epoch<T: SlotClock + 'static, E: EthSpec>(
     );
 
     // Update the duties service with the new `DutyAndProof` messages.
+    // 更新职责服务与新的`DutyAndProof`消息。
     let mut attesters = duties_service.attesters.write();
     let mut already_warned = Some(());
     for duty in &new_duties {
@@ -1067,9 +1108,11 @@ async fn poll_beacon_proposers<T: SlotClock + 'static, E: EthSpec>(
 
         // Compute the block proposers for this slot again, now that we've received an update from
         // the BN.
+        // 再次计算这个slot的block proposers，现在我们已经从BN收到了一个更新。
         //
         // Then, compute the difference between these two sets to obtain a set of block proposers
         // which were not included in the initial notification to the `BlockService`.
+        // 之后，计算这两个集合之间的差异，以获得一个block proposers的集合，这些block proposers没有包含在对`BlockService`的初始通知中。
         let additional_block_producers = duties_service
             .block_proposers(current_slot)
             .difference(&initial_block_proposers)
@@ -1078,6 +1121,7 @@ async fn poll_beacon_proposers<T: SlotClock + 'static, E: EthSpec>(
 
         // If there are any new proposers for this slot, send a notification so they produce a
         // block.
+        // 如果这个slot有任何新的proposers，发送一个通知，这样他们就可以产生一个block。
         //
         // See the function-level documentation for more reasoning about this behaviour.
         if !additional_block_producers.is_empty() {
@@ -1091,6 +1135,7 @@ async fn poll_beacon_proposers<T: SlotClock + 'static, E: EthSpec>(
             .await;
             debug!(
                 log,
+                // 检测到新的block proposer
                 "Detected new block proposer";
                 "current_slot" => current_slot,
             );
@@ -1109,6 +1154,7 @@ async fn poll_beacon_proposers<T: SlotClock + 'static, E: EthSpec>(
 }
 
 /// Notify the block service if it should produce a block.
+/// 通知block service，它需要产生一个block。
 async fn notify_block_production_service<T: SlotClock + 'static, E: EthSpec>(
     current_slot: Slot,
     block_proposers: &HashSet<PublicKeyBytes>,

@@ -494,6 +494,7 @@ impl<T: EthSpec> ProductionValidatorClient<T> {
         let (block_service_tx, block_service_rx) = mpsc::channel(channel_capacity);
         let log = self.context.log();
 
+        // 启动duties service
         duties_service::start_update_service(self.duties_service.clone(), block_service_tx);
 
         self.block_service

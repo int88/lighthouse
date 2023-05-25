@@ -62,6 +62,7 @@ pub fn proposer_duties<T: BeaconChainTypes>(
             .safe_add(1)
             .map_err(warp_utils::reject::arith_error)?
     {
+        // 如果是current epoch + 1，计算proposer duties，使用head state，不使用cache
         let (proposers, dependent_root, execution_status, _fork) =
             compute_proposer_duties_from_head(request_epoch, chain)
                 .map_err(warp_utils::reject::beacon_chain_error)?;
@@ -174,6 +175,7 @@ fn compute_and_cache_proposer_duties<T: BeaconChainTypes>(
     // Prime the proposer shuffling cache with the newly-learned value.
     // 用新学习的值初始化proposer shuffling cache。
     chain
+        // 加入到cache中
         .beacon_proposer_cache
         .lock()
         .insert(current_epoch, dependent_root, indices.clone(), fork)
@@ -273,6 +275,7 @@ fn convert_to_api_response<T: BeaconChainTypes>(
         .map_err(warp_utils::reject::beacon_chain_error)?;
 
     // Map our internal data structure into the API structure.
+    // 映射内部的数据结构到API结构
     let proposer_data = indices
         .iter()
         .enumerate()
@@ -290,6 +293,7 @@ fn convert_to_api_response<T: BeaconChainTypes>(
         .collect::<Vec<_>>();
 
     // Consistency check.
+    // 一致性检查
     let slots_per_epoch = T::EthSpec::slots_per_epoch() as usize;
     if proposer_data.len() != slots_per_epoch {
         Err(warp_utils::reject::custom_server_error(format!(
