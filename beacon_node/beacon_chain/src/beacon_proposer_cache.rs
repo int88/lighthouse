@@ -38,15 +38,20 @@ pub struct Proposer {
 
 /// The list of proposers for some given `epoch`, alongside the `fork` that should be used to verify
 /// their signatures.
+/// 一系列proposers，对于一些给定的`epoch`，并且`fork`应该用来验证他们的签名
 pub struct EpochBlockProposers {
     /// The epoch to which the proposers pertain.
+    /// 提案人相关的epoch
     epoch: Epoch,
     /// The fork that should be used to verify proposer signatures.
+    /// 用于校验proposer signatures的fork
     fork: Fork,
     /// A list of length `T::EthSpec::slots_per_epoch()`, representing the proposers for each slot
     /// in that epoch.
+    /// 一个长度为`T::EthSpec::slots_per_epoch()`的列表，表示epoch中每个slot的proposers
     ///
     /// E.g., if `self.epoch == 1`, then `self.proposers[0]` contains the proposer for slot `32`.
+    /// 如果`self.epoch == 1`，那么`self.proposers[0]`包含slot `32`的proposer
     proposers: SmallVec<[usize; TYPICAL_SLOTS_PER_EPOCH]>,
 }
 
@@ -112,6 +117,7 @@ impl BeaconProposerCache {
     }
 
     /// Insert the proposers into the cache.
+    /// 将proposer插入cache
     ///
     /// See `Self::get` for a description of `shuffling_decision_block`.
     ///
@@ -147,9 +153,11 @@ pub fn compute_proposer_duties_from_head<T: BeaconChainTypes>(
 ) -> Result<(Vec<usize>, Hash256, ExecutionStatus, Fork), BeaconChainError> {
     // Atomically collect information about the head whilst holding the canonical head `Arc` as
     // short as possible.
+    // 原子地收集有关head的信息，同时尽可能短地持有canonical head `Arc`
     let (mut state, head_state_root, head_block_root) = {
         let head = chain.canonical_head.cached_head();
         // Take a copy of the head state.
+        // 拷贝head state
         let head_state = head
             .snapshot
             .beacon_state
@@ -166,6 +174,7 @@ pub fn compute_proposer_duties_from_head<T: BeaconChainTypes>(
         .ok_or(BeaconChainError::HeadMissingFromForkChoice(head_block_root))?;
 
     // Advance the state into the requested epoch.
+    // 移动state到请求的epoch
     ensure_state_is_in_epoch(&mut state, head_state_root, current_epoch, &chain.spec)?;
 
     let indices = state
@@ -174,6 +183,7 @@ pub fn compute_proposer_duties_from_head<T: BeaconChainTypes>(
 
     let dependent_root = state
         // The only block which decides its own shuffling is the genesis block.
+        // 唯一决定自己shuffling的block是genesis block
         .proposer_shuffling_decision_root(chain.genesis_block_root)
         .map_err(BeaconChainError::from)?;
 
@@ -181,13 +191,17 @@ pub fn compute_proposer_duties_from_head<T: BeaconChainTypes>(
 }
 
 /// If required, advance `state` to `target_epoch`.
+/// 如果需要的话，移动`state`到`target_epoch`
 ///
 /// ## Details
 ///
 /// - Returns an error if `state.current_epoch() > target_epoch`.
+/// - 返回error，如果`state.current_epoch() > target_epoch`
 /// - No-op if `state.current_epoch() == target_epoch`.
+/// - No-op如果`state.current_epoch() == target_epoch`
 /// - It must be the case that `state.canonical_root() == state_root`, but this function will not
 ///     check that.
+/// - 必须是`state.canonical_root() == state_root`，但是这个函数不会检查
 pub fn ensure_state_is_in_epoch<E: EthSpec>(
     state: &mut BeaconState<E>,
     state_root: Hash256,

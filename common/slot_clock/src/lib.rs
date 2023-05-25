@@ -70,6 +70,7 @@ pub trait SlotClock: Send + Sync + Sized + Clone {
     fn genesis_duration(&self) -> Duration;
 
     /// Returns the slot if the internal clock were advanced by `duration`.
+    /// 返回slot，如果内部时钟被`duration`提前
     fn now_with_future_tolerance(&self, tolerance: Duration) -> Option<Slot> {
         self.slot_of(self.now_duration()?.checked_add(tolerance)?)
     }

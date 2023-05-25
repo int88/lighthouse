@@ -540,8 +540,10 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Returns the active validator indices for the given epoch.
+    /// 返回给定epoch的active validator的indices
     ///
     /// Does not utilize the cache, performs a full iteration over the validator registry.
+    /// 不要使用cache，对validator registry进行完整的迭代
     pub fn get_active_validator_indices(
         &self,
         epoch: Epoch,
@@ -612,22 +614,26 @@ impl<T: EthSpec> BeaconState<T> {
 
     /// Returns the block root which decided the proposer shuffling for the current epoch. This root
     /// can be used to key this proposer shuffling.
+    /// 返回block root，决定了当前epoch的proposer shuffling。这个root可以用来key这个proposer shuffling
     ///
     /// ## Notes
     ///
     /// The `block_root` covers the one-off scenario where the genesis block decides its own
     /// shuffling. It should be set to the latest block applied to `self` or the genesis block root.
+    /// 这个`block_root`覆盖了一次性的场景，genesis block决定了自己的shuffling。它应该设置为最新的block，或者genesis block root
     pub fn proposer_shuffling_decision_root(&self, block_root: Hash256) -> Result<Hash256, Error> {
         let decision_slot = self.proposer_shuffling_decision_slot();
         if self.slot() == decision_slot {
             Ok(block_root)
         } else {
+            // 获取对应的block root
             self.get_block_root(decision_slot).map(|root| *root)
         }
     }
 
     /// Returns the slot at which the proposer shuffling was decided. The block root at this slot
     /// can be used to key the proposer shuffling for the current epoch.
+    /// 返回proposer shuffling被决定的slot，这个slot的block root可以用来key当前epoch的proposer shuffling
     fn proposer_shuffling_decision_slot(&self) -> Slot {
         self.current_epoch()
             .start_slot(T::slots_per_epoch())
@@ -667,6 +673,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Compute the proposer (not necessarily for the Beacon chain) from a list of indices.
+    /// 计算proposer（对于beacon chain不是必须的），从一系列indices中
     pub fn compute_proposer_index(
         &self,
         indices: &[usize],
@@ -769,11 +776,13 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Returns the beacon proposer index for the `slot` in the given `relative_epoch`.
+    /// 返回beacon proposer index，对于给定`relative_epoch`的`slot`
     ///
     /// Spec v0.12.1
     pub fn get_beacon_proposer_index(&self, slot: Slot, spec: &ChainSpec) -> Result<usize, Error> {
         // Proposer indices are only known for the current epoch, due to the dependence on the
         // effective balances of validators, which change at every epoch transition.
+        // Proposer indices仅在当前epoch中已知，因为它们依赖于验证器的有效余额，而验证器的有效余额在每个epoch转换时都会更改。
         let epoch = slot.epoch(T::slots_per_epoch());
         if epoch != self.current_epoch() {
             return Err(Error::SlotOutOfBounds);
@@ -786,24 +795,30 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Returns the beacon proposer index for each `slot` in `self.current_epoch()`.
+    /// 返回`self.current_epoch()`中每个`slot`的beacon proposer index
     ///
     /// The returned `Vec` contains one proposer index for each slot. For example, if
     /// `state.current_epoch() == 1`, then `vec[0]` refers to slot `32` and `vec[1]` refers to slot
     /// `33`. It will always be the case that `vec.len() == SLOTS_PER_EPOCH`.
+    /// 返回`Vec`包含一个proposer index，对于每个slot，例如，如果`state.current_epoch() == 1`，那么`vec[0]`指的是slot `32`，`vec[1]`指的是slot `33`
+    /// `vec.len() == SLOTS_PER_EPOCH`总是成立的。
     pub fn get_beacon_proposer_indices(&self, spec: &ChainSpec) -> Result<Vec<usize>, Error> {
         // Not using the cached validator indices since they are shuffled.
+        // 不要用缓存的validator indices，因为它们是随机的。
         let indices = self.get_active_validator_indices(self.current_epoch(), spec)?;
 
         self.current_epoch()
             .slot_iter(T::slots_per_epoch())
             .map(|slot| {
                 let seed = self.get_beacon_proposer_seed(slot, spec)?;
+                // 计算proposer index
                 self.compute_proposer_index(&indices, &seed, spec)
             })
             .collect()
     }
 
     /// Compute the seed to use for the beacon proposer selection at the given `slot`.
+    /// 计算用于给定`slot`的beacon proposer选择的种子。
     ///
     /// Spec v0.12.1
     pub fn get_beacon_proposer_seed(&self, slot: Slot, spec: &ChainSpec) -> Result<Vec<u8>, Error> {
@@ -1262,6 +1277,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     ///  Return the epoch at which an activation or exit triggered in ``epoch`` takes effect.
+    /// 返回epoch，在其中激活或退出触发`epoch`生效。
     ///
     ///  Spec v0.12.1
     pub fn compute_activation_exit_epoch(

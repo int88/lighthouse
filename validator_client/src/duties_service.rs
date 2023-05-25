@@ -1,10 +1,13 @@
 //! The `DutiesService` contains the attester/proposer duties for all local validators.
+//! `DutiesService`包含了attester/proposer duties，对于所有的local validators
 //!
 //! It learns of the local validator via the `crate::ValidatorStore` struct. It keeps the duties
 //! up-to-date by polling the beacon node on regular intervals.
+//! 它通过`crate::ValidatorStore`结构体了解local validator。它通过定期轮询beacon node来保持duties的最新状态。
 //!
 //! The `DutiesService` is also responsible for sending events to the `BlockService` which trigger
 //! block production.
+//! `DutiesService`还负责向`BlockService`发送事件，触发block production。
 
 mod sync;
 
@@ -927,27 +930,38 @@ async fn fill_in_selection_proofs<T: SlotClock + 'static, E: EthSpec>(
 
 /// Download the proposer duties for the current epoch and store them in `duties_service.proposers`.
 /// If there are any proposer for this slot, send out a notification to the block proposers.
+/// 为当前的epoch下载proposer duties并且存储在`duties_service.proposers`中。如果有任何proposer在这个slot
+/// 发送一个通知给block proposers。
 ///
 /// ## Note
 ///
 /// This function will potentially send *two* notifications to the `BlockService`; it will send a
 /// notification initially, then it will download the latest duties and send a *second* notification
 /// if those duties have changed. This behaviour simultaneously achieves the following:
+/// 这个函数会发送两个通知给`BlockService`；它会发送一个通知，然后它会下载最新的duties并且发送一个第二个通知
+/// 如果这些duties已经改变了。这个行为同时实现了以下的目标：
 ///
 /// 1. Block production can happen immediately and does not have to wait for the proposer duties to
 ///    download.
+/// 2. Block production可以立即发生并且不需要等待proposer duties下载。
 /// 2. We won't miss a block if the duties for the current slot happen to change with this poll.
+/// 2. 我们不会错过一个block如果当前slot的duties恰好在这个poll中改变了。
 ///
 /// This sounds great, but is it safe? Firstly, the additional notification will only contain block
 /// producers that were not included in the first notification. This should be safety enough.
 /// However, we also have the slashing protection as a second line of defence. These two factors
 /// provide an acceptable level of safety.
+/// 这听起来很棒，但是它是安全的吗？首先，额外的通知只包含了block producers，这些block producers没有包含在第一个通知中。
+/// 这应该是足够安全的。然而，我们也有slashing protection作为第二道防线。这两个因素提供了一个可以接受的安全级别。
 ///
 /// It's important to note that since there is a 0-epoch look-ahead (i.e., no look-ahead) for block
 /// proposers then it's very likely that a proposal for the first slot of the epoch will need go
 /// through the slow path every time. I.e., the proposal will only happen after we've been able to
 /// download and process the duties from the BN. This means it is very important to ensure this
 /// function is as fast as possible.
+/// 重要的是要注意，因为对于block proposers来说，有一个0-epoch的look-ahead（即没有look-ahead），
+/// 所以很可能一个epoch的第一个slot的proposal每次都需要通过slow path。也就是说，proposal只会在我们能够下载和处理BN的duties之后才会发生。
+/// 这意味着确保这个函数尽可能快是非常重要的。
 async fn poll_beacon_proposers<T: SlotClock + 'static, E: EthSpec>(
     duties_service: &DutiesService<T, E>,
     block_service_tx: &mut Sender<BlockServiceNotification>,
@@ -961,9 +975,11 @@ async fn poll_beacon_proposers<T: SlotClock + 'static, E: EthSpec>(
         .slot_clock
         .now()
         .ok_or(Error::UnableToReadSlotClock)?;
+    // 获取当前的epoch
     let current_epoch = current_slot.epoch(E::slots_per_epoch());
 
     // Notify the block proposal service for any proposals that we have in our cache.
+    // 通知block proposal service对于我们在cache中的任何proposal。
     //
     // See the function-level documentation for more information.
     let initial_block_proposers = duties_service.block_proposers(current_slot);
@@ -977,15 +993,18 @@ async fn poll_beacon_proposers<T: SlotClock + 'static, E: EthSpec>(
     .await;
 
     // Collect *all* pubkeys, even those undergoing doppelganger protection.
+    // 收集所有的pubkeys，即使是那些正在进行doppelganger protection的pubkeys。
     //
     // It is useful to keep the duties for all validators around, so they're on hand when
     // doppelganger finishes.
+    // 保留所有validators的duties是有用的，因此当doppelganger完成时，它们就可以使用。
     let local_pubkeys: HashSet<_> = duties_service
         .validator_store
         .voting_pubkeys(DoppelgangerStatus::ignored);
 
     // Only download duties and push out additional block production events if we have some
     // validators.
+    // 只下载duties并且推送额外的block production事件如果我们有一些validators。
     if !local_pubkeys.is_empty() {
         let download_result = duties_service
             .beacon_nodes
@@ -1038,6 +1057,7 @@ async fn poll_beacon_proposers<T: SlotClock + 'static, E: EthSpec>(
                 }
             }
             // Don't return early here, we still want to try and produce blocks using the cached values.
+            // 不要在这里提前返回，我们仍然希望尝试使用缓存的值来产生blocks。
             Err(e) => error!(
                 log,
                 "Failed to download proposer duties";
@@ -1079,6 +1099,7 @@ async fn poll_beacon_proposers<T: SlotClock + 'static, E: EthSpec>(
     }
 
     // Prune old duties.
+    // 移除旧的duties
     duties_service
         .proposers
         .write()

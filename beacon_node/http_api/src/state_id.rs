@@ -127,6 +127,7 @@ impl StateId {
     }
 
     /// Return the `BeaconState` identified by `self`.
+    /// 返回由`self`标识的`BeaconState`
     pub fn state<T: BeaconChainTypes>(
         &self,
         chain: &BeaconChain<T>,

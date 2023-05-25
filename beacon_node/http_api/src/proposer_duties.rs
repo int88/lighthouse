@@ -1,4 +1,5 @@
 //! Contains the handler for the `GET validator/duties/proposer/{epoch}` endpoint.
+//! 对于`GET validator/duties/proposer/{epoch}`端点的处理程序。
 
 use crate::state_id::StateId;
 use beacon_chain::{
@@ -16,6 +17,7 @@ use types::{CloneConfig, Epoch, EthSpec, Hash256, Slot};
 type ApiDuties = api_types::DutiesResponse<Vec<api_types::ProposerData>>;
 
 /// Handles a request from the HTTP API for proposer duties.
+/// 处理来自HTTP API的请求，对于proposer duties
 pub fn proposer_duties<T: BeaconChainTypes>(
     request_epoch: Epoch,
     chain: &BeaconChain<T>,
@@ -27,10 +29,13 @@ pub fn proposer_duties<T: BeaconChainTypes>(
 
     // Determine what the current epoch would be if we fast-forward our system clock by
     // `MAXIMUM_GOSSIP_CLOCK_DISPARITY`.
+    // 决定如果我们将系统时钟向前快进`MAXIMUM_GOSSIP_CLOCK_DISPARITY`，当前epoch会是什么。
     //
     // Most of the time, `tolerant_current_epoch` will be equal to `current_epoch`. However, during
     // the first `MAXIMUM_GOSSIP_CLOCK_DISPARITY` duration of the epoch `tolerant_current_epoch`
     // will equal `current_epoch + 1`
+    // 大多数时间，`tolerant_current_epoch`将等于`current_epoch`。然而，在epoch的第一个`MAXIMUM_GOSSIP_CLOCK_DISPARITY`持续时间内
+    // `tolerant_current_epoch`将等于`current_epoch + 1`
     let tolerant_current_epoch = chain
         .slot_clock
         .now_with_future_tolerance(MAXIMUM_GOSSIP_CLOCK_DISPARITY)
@@ -40,6 +45,7 @@ pub fn proposer_duties<T: BeaconChainTypes>(
     if request_epoch == current_epoch || request_epoch == tolerant_current_epoch {
         // If we could consider ourselves in the `request_epoch` when allowing for clock disparity
         // tolerance then serve this request from the cache.
+        // 如果我们可以认为自己在`request_epoch`，当允许时钟差异容忍度时，从cache中提供此请求。
         if let Some(duties) = try_proposer_duties_from_cache(request_epoch, chain)? {
             Ok(duties)
         } else {
@@ -48,6 +54,7 @@ pub fn proposer_duties<T: BeaconChainTypes>(
                 "Proposer cache miss";
                 "request_epoch" =>  request_epoch,
             );
+            // 计算proposer duties，使用head state，不使用cache
             compute_and_cache_proposer_duties(request_epoch, chain)
         }
     } else if request_epoch
@@ -71,6 +78,7 @@ pub fn proposer_duties<T: BeaconChainTypes>(
             .map_err(warp_utils::reject::arith_error)?
     {
         // Reject queries about the future epochs for which lookahead is not possible
+        // 拒绝关于未来epoch的查询，对于这些查询，前瞻是不可能的
         Err(warp_utils::reject::custom_bad_request(format!(
             "request epoch {} is ahead of the next epoch {}",
             request_epoch, current_epoch
@@ -79,17 +87,20 @@ pub fn proposer_duties<T: BeaconChainTypes>(
         // request_epoch < current_epoch
         //
         // Queries about the past are handled with a slow path.
+        // 对于过去的查询，使用slow path处理。
         compute_historic_proposer_duties(request_epoch, chain)
     }
 }
 
 /// Attempt to load the proposer duties from the `chain.beacon_proposer_cache`, returning `Ok(None)`
 /// if there is a cache miss.
+/// 试着从`chain.beacon_proposer_cache`加载proposer duties，如果cache miss，返回`Ok(None)`
 ///
 /// ## Notes
 ///
 /// The `current_epoch` value should equal the current epoch on the slot clock (with some
 /// tolerance), otherwise we risk washing out the proposer cache at the expense of block processing.
+/// `current_epoch`的值应该等于slot clock上的当前epoch（有一些容忍度），否则我们冒着以块处理为代价冲掉proposer cache的风险。
 fn try_proposer_duties_from_cache<T: BeaconChainTypes>(
     request_epoch: Epoch,
     chain: &BeaconChain<T>,
@@ -127,6 +138,7 @@ fn try_proposer_duties_from_cache<T: BeaconChainTypes>(
         .get_epoch::<T::EthSpec>(dependent_root, request_epoch)
         .cloned()
         .map(|indices| {
+            // 转换为api response
             convert_to_api_response(
                 chain,
                 request_epoch,
@@ -140,14 +152,17 @@ fn try_proposer_duties_from_cache<T: BeaconChainTypes>(
 
 /// Compute the proposer duties using the head state, add the duties to the proposer cache and
 /// return the proposers.
+/// 使用head state计算proposer duties，将duties添加到proposer cache并返回proposers。
 ///
 /// This method does *not* attempt to read the values from the cache before computing them. See
 /// `try_proposer_duties_from_cache` to read values.
+/// 这个方法不试着在计算之前从cache中读取值。看`try_proposer_duties_from_cache`来读值。
 ///
 /// ## Notes
 ///
 /// The `current_epoch` value should equal the current epoch on the slot clock, otherwise we risk
 /// washing out the proposer cache at the expense of block processing.
+/// `current_epoch`的值应该等于slot clock上的当前epoch，否则我们冒着以块处理为代价冲掉proposer cache的风险。
 fn compute_and_cache_proposer_duties<T: BeaconChainTypes>(
     current_epoch: Epoch,
     chain: &BeaconChain<T>,
@@ -157,6 +172,7 @@ fn compute_and_cache_proposer_duties<T: BeaconChainTypes>(
             .map_err(warp_utils::reject::beacon_chain_error)?;
 
     // Prime the proposer shuffling cache with the newly-learned value.
+    // 用新学习的值初始化proposer shuffling cache。
     chain
         .beacon_proposer_cache
         .lock()
@@ -175,18 +191,22 @@ fn compute_and_cache_proposer_duties<T: BeaconChainTypes>(
 
 /// Compute some proposer duties by reading a `BeaconState` from disk, completely ignoring the
 /// `beacon_proposer_cache`.
+/// 计算一些proposer duties，通过从磁盘读取`BeaconState`，完全忽略`beacon_proposer_cache`。
 fn compute_historic_proposer_duties<T: BeaconChainTypes>(
     epoch: Epoch,
     chain: &BeaconChain<T>,
 ) -> Result<ApiDuties, warp::reject::Rejection> {
     // If the head is quite old then it might still be relevant for a historical request.
+    // 如果head很旧，那么它可能仍然与历史请求相关。
     //
     // Avoid holding the `cached_head` longer than necessary.
+    // 避免比必要的时间更长地持有`cached_head`。
     let state_opt = {
         let (cached_head, execution_status) = chain
             .canonical_head
             .head_and_execution_status()
             .map_err(warp_utils::reject::beacon_chain_error)?;
+        // 获取当前的head
         let head = &cached_head.snapshot;
 
         if head.beacon_state.current_epoch() <= epoch {
@@ -213,6 +233,7 @@ fn compute_historic_proposer_duties<T: BeaconChainTypes>(
         };
 
     // Ensure the state lookup was correct.
+    // 确保state lookup是正确的。
     if state.current_epoch() != epoch {
         return Err(warp_utils::reject::custom_server_error(format!(
             "state epoch {} not equal to request epoch {}",
@@ -228,6 +249,7 @@ fn compute_historic_proposer_duties<T: BeaconChainTypes>(
 
     // We can supply the genesis block root as the block root since we know that the only block that
     // decides its own root is the genesis block.
+    // 我们可以提供genesis block root作为block root，因为我们知道唯一决定自己root的block是genesis block。
     let dependent_root = state
         .proposer_shuffling_decision_root(chain.genesis_block_root)
         .map_err(BeaconChainError::from)
@@ -238,6 +260,7 @@ fn compute_historic_proposer_duties<T: BeaconChainTypes>(
 
 /// Converts the internal representation of proposer duties into one that is compatible with the
 /// standard API.
+/// 转换proposer duties的内部表示形式，使其与标准API兼容。
 fn convert_to_api_response<T: BeaconChainTypes>(
     chain: &BeaconChain<T>,
     epoch: Epoch,

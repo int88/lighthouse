@@ -140,6 +140,7 @@ impl fmt::Display for BlockId {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum StateId {
+    // StateId可能的值
     Head,
     Genesis,
     Finalized,

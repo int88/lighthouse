@@ -197,11 +197,13 @@ pub enum ProduceBlockVerification {
 }
 
 /// Payload attributes for which the `beacon_chain` crate is responsible.
+/// `beacon_chain` crate负责的payload attributes
 pub struct PrePayloadAttributes {
     pub proposer_index: u64,
     pub prev_randao: Hash256,
     /// The parent block number is not part of the payload attributes sent to the EL, but *is*
     /// sent to builders via SSE.
+    /// parent block number不是发送给EL的payload attributes的一部分，但是通过SSE发送给builders
     pub parent_block_number: u64,
 }
 
@@ -420,6 +422,7 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// A cache of eth1 deposit data at epoch boundaries for deposit finalization
     pub eth1_finalization_cache: TimeoutRwLock<Eth1FinalizationCache>,
     /// Caches the beacon block proposer shuffling for a given epoch and shuffling key root.
+    /// 对于一个给定的epoch和shuffling key root，缓存beacon block proposer shuffling
     pub beacon_proposer_cache: Mutex<BeaconProposerCache>,
     /// Caches a map of `validator_index -> validator_pubkey`.
     pub(crate) validator_pubkey_cache: TimeoutRwLock<ValidatorPubkeyCache<T>>,
@@ -3921,6 +3924,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Get the proposer index and `prev_randao` value for a proposal at slot `proposal_slot`.
+    /// 获取一个proposer index以及`prev_randao`值，对于一个proposal slot
     ///
     /// The `proposer_head` may be the head block of `cached_head` or its parent. An error will
     /// be returned for any other value.
@@ -3936,6 +3940,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let parent_block_root = cached_head.parent_block_root();
 
         // The proposer head must be equal to the canonical head or its parent.
+        // proposer head必须等于canonical head或者它的parent
         if proposer_head != head_block_root && proposer_head != parent_block_root {
             warn!(
                 self.log,
@@ -3947,6 +3952,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Compute the proposer index.
+        // 计算proposer index
         let head_epoch = cached_head.head_slot().epoch(T::EthSpec::slots_per_epoch());
         let shuffling_decision_root = if head_epoch == proposal_epoch {
             cached_head
@@ -3961,8 +3967,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .lock()
             .get_slot::<T::EthSpec>(shuffling_decision_root, proposal_slot);
         let proposer_index = if let Some(proposer) = cached_proposer {
+            //返回proposer的index
             proposer.index as u64
         } else {
+            // 如果没有缓存的proposer，重新计算
             if head_epoch + 2 < proposal_epoch {
                 warn!(
                     self.log,
@@ -3990,6 +3998,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .get(proposer_offset)
                 .ok_or(BeaconChainError::NoProposerForSlot(proposal_slot))?;
 
+            // 插入到beacon proposer cache
             self.beacon_proposer_cache.lock().insert(
                 proposal_epoch,
                 decision_root,
@@ -4000,8 +4009,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             // It's possible that the head changes whilst computing these duties. If so, abandon
             // this routine since the change of head would have also spawned another instance of
             // this routine.
+            // 可能在计算这些duties时，head发生了变化，如果是这样，放弃这个routine，因为head的变化也会产生这个routine的另一个实例
             //
             // Exit now, after updating the cache.
+            // 现在退出，之后更新cache
             if decision_root != shuffling_decision_root {
                 warn!(
                     self.log,
@@ -4181,6 +4192,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Only attempt a re-org if we have a proposer registered for the re-org slot.
+        // 只尝试re-org，如果我们有一个proposer注册到re-org slot
         let proposing_at_re_org_slot = {
             // The proposer shuffling has the same decision root as the next epoch attestation
             // shuffling. We know our re-org block is not on the epoch boundary, so it has the

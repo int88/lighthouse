@@ -802,6 +802,7 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
         let (expected_proposer, fork, parent, block) = if let Some(proposer) = proposer_opt {
             // The proposer index was cached and we can return it without needing to load the
             // parent.
+            // proposer index已经缓存，我们可以直接返回，不需要加载parent
             (proposer.index, proposer.fork, None, block)
         } else {
             // The proposer index was *not* cached and we must load the parent in order to determine
@@ -831,6 +832,7 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
                 .ok_or_else(|| BeaconChainError::NoProposerForSlot(block.slot()))?;
 
             // Prime the proposer shuffling cache with the newly-learned value.
+            // 预热proposer shuffling cache，用最新学到的值
             chain.beacon_proposer_cache.lock().insert(
                 block_epoch,
                 proposer_shuffling_decision_block,
