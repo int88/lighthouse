@@ -625,6 +625,7 @@ impl<T: EthSpec> BeaconState<T> {
         // 获取desision slot
         let decision_slot = self.proposer_shuffling_decision_slot();
         if self.slot() == decision_slot {
+            // 当前所属的slot就和shuffling decision slot相等
             Ok(block_root)
         } else {
             // 获取对应的block root

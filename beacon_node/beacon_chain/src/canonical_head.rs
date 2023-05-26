@@ -919,6 +919,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .epoch(T::EthSpec::slots_per_epoch());
 
         // These fields are used for server-sent events.
+        // 这些字段用于server-sent事件
         let state_root = new_snapshot.beacon_state_root();
         let head_slot = new_snapshot.beacon_state.slot();
         let dependent_root = new_snapshot

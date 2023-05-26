@@ -402,6 +402,7 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// 用于计算canonical head
     pub canonical_head: CanonicalHead<T>,
     /// The root of the genesis block.
+    /// genesis block的root
     pub genesis_block_root: Hash256,
     /// The root of the genesis state.
     pub genesis_state_root: Hash256,
@@ -4037,10 +4038,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         };
 
         // Get the `prev_randao` and parent block number.
+        // 获取`prev_randao`以及parent block number
         let head_block_number = cached_head.head_block_number()?;
         let (prev_randao, parent_block_number) = if proposer_head == parent_block_root {
             (
+                // 获取parent random
                 cached_head.parent_random()?,
+                // head block number - 1
                 head_block_number.saturating_sub(1),
             )
         } else {
@@ -4126,13 +4130,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Determine whether a fork choice update to the execution layer should be overridden.
+    /// 决定是否一个对execution layer的fork choice update应该被覆盖
     ///
     /// This is *only* necessary when proposer re-orgs are enabled, because we have to prevent the
     /// execution layer from enshrining the block we want to re-org as the head.
+    /// 这只有在启用proposer re-orgs时才是必要的，因为我们必须阻止execution layer将我们想要re-org的块作为head
     ///
     /// This function uses heuristics that align quite closely but not exactly with the re-org
     /// conditions set out in `get_state_for_re_org` and `get_proposer_head`. The differences are
     /// documented below.
+    /// 这个函数使用启发式方法，与`get_state_for_re_org`和`get_proposer_head`中列出的re-org条件非常接近，
+    /// 但并不完全相同。差异如下所述。
     fn overridden_forkchoice_update_params(
         &self,
         canonical_forkchoice_params: ForkchoiceUpdateParameters,
@@ -4158,6 +4166,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let _timer = metrics::start_timer(&metrics::FORK_CHOICE_OVERRIDE_FCU_TIMES);
 
         // Never override if proposer re-orgs are disabled.
+        // 不要覆盖如果proposer re-orgs被禁用
         let re_org_threshold = self
             .config
             .re_org_threshold
@@ -4166,6 +4175,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let head_block_root = canonical_forkchoice_params.head_root;
 
         // Perform initial checks and load the relevant info from fork choice.
+        // 执行初始检查并从fork choice加载相关信息
         let info = self
             .canonical_head
             .fork_choice_read_lock()
@@ -4178,6 +4188,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // The slot of our potential re-org block is always 1 greater than the head block because we
         // only attempt single-slot re-orgs.
+        // 我们潜在的re-org块的slot总是比head block大1，因为我们只尝试单slot re-orgs
         let head_slot = info.head_node.slot;
         let re_org_block_slot = head_slot + 1;
         let fork_choice_slot = info.current_slot;
@@ -4185,6 +4196,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // If a re-orging proposal isn't made by the `max_re_org_slot_delay` then we give up
         // and allow the fork choice update for the canonical head through so that we may attest
         // correctly.
+        // 如果re-orging proposal没有在`max_re_org_slot_delay`之前完成，那么我们放弃并允许fork choice update
+        // 通过canonical head，以便我们可以正确地attest
         let current_slot_ok = if head_slot == fork_choice_slot {
             true
         } else if re_org_block_slot == fork_choice_slot {
@@ -4210,6 +4223,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             // shuffling. We know our re-org block is not on the epoch boundary, so it has the
             // same proposer shuffling as the head (but not necessarily the parent which may lie
             // in the previous epoch).
+            // proposer shuffling和下一个epoch的attestation shuffling有着同样的decision root。
+            // 我们知道我们的re-org block不在epoch边界上，所以它有着和head一样的proposer shuffling
+            // 但是不一定有着和parent一样的proposer shuffling，parent可能在上一个epoch上
             let shuffling_decision_root = info
                 .head_node
                 .next_epoch_shuffling_id

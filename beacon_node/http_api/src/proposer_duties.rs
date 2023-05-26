@@ -109,6 +109,7 @@ fn try_proposer_duties_from_cache<T: BeaconChainTypes>(
     let head = chain.canonical_head.cached_head();
     let head_block = &head.snapshot.beacon_block;
     let head_block_root = head.head_block_root();
+    // 返回head decision root
     let head_decision_root = head
         .snapshot
         .beacon_state
@@ -123,10 +124,12 @@ fn try_proposer_duties_from_cache<T: BeaconChainTypes>(
         // head_epoch == request_epoch
         Ordering::Equal => head_decision_root,
         // head_epoch < request_epoch
+        // 如果head_epoch小于请求的epoch
         Ordering::Less => head_block_root,
         // head_epoch > request_epoch
         Ordering::Greater => {
             return Err(warp_utils::reject::custom_server_error(format!(
+                // head epoch比请求epoch晚
                 "head epoch {} is later than request epoch {}",
                 head_epoch, request_epoch
             )))

@@ -140,6 +140,7 @@ pub enum BlockError<T: EthSpec> {
     ///
     /// It's unclear if this block is valid, but it cannot be processed without already knowing
     /// its parent.
+    /// 无法确定block是合法的，但是无法处理，因为无法确定其父block
     ParentUnknown(Arc<SignedBeaconBlock<T>>),
     /// The block skips too many slots and is a DoS risk.
     TooManySkippedSlots { parent_slot: Slot, block_slot: Slot },
@@ -800,12 +801,15 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
             });
         }
 
+        // 确定block的shuffling decision block
         let proposer_shuffling_decision_block =
             if parent_block.slot.epoch(T::EthSpec::slots_per_epoch()) == block_epoch {
+                // 和parent在同一个epoch，所以使用parent的shuffling decision block
                 parent_block
                     .next_epoch_shuffling_id
                     .shuffling_decision_block
             } else {
+                // 和parent不在同一个epoch，所以使用block的root作为shuffling decision block
                 parent_block.root
             };
 
@@ -1720,6 +1724,7 @@ pub fn get_block_root<E: EthSpec>(block: &SignedBeaconBlock<E>) -> Hash256 {
 
 /// Verify the parent of `block` is known, returning some information about the parent block from
 /// fork choice.
+/// 校验`block`的parent是否已知，返回fork choice中关于parent block的一些信息。
 #[allow(clippy::type_complexity)]
 fn verify_parent_block_is_known<T: BeaconChainTypes>(
     chain: &BeaconChain<T>,
@@ -1728,10 +1733,12 @@ fn verify_parent_block_is_known<T: BeaconChainTypes>(
     if let Some(proto_block) = chain
         .canonical_head
         .fork_choice_read_lock()
+        // 获取parent block
         .get_block(&block.message().parent_root())
     {
         Ok((proto_block, block))
     } else {
+        // parent未知
         Err(BlockError::ParentUnknown(block))
     }
 }

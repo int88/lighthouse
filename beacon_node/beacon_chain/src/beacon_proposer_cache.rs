@@ -84,6 +84,7 @@ impl BeaconProposerCache {
     ) -> Option<Proposer> {
         // 获取slot对应的epoch
         let epoch = slot.epoch(T::slots_per_epoch());
+        // 根据epoch + shuffling decision block的组合，作为key
         let key = (epoch, shuffling_decision_block);
         // 从cache中查找
         if let Some(cache) = self.cache.get(&key) {
@@ -106,6 +107,7 @@ impl BeaconProposerCache {
     }
 
     /// As per `Self::get_slot`, but returns all proposers in all slots for the given `epoch`.
+    /// 返回所有的proposers，在所有的slots，对于给定的`epoch`
     ///
     /// The nth slot in the returned `SmallVec` will be equal to the nth slot in the given `epoch`.
     /// E.g., if `epoch == 1` then `smallvec[0]` refers to slot 32 (assuming `SLOTS_PER_EPOCH ==
