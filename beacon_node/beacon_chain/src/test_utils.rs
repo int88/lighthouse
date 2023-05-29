@@ -762,6 +762,8 @@ where
         // If we produce two blocks for the same slot, they hash up to the same value and
         // BeaconChain errors out with `BlockIsAlreadyKnown`.  Vary the graffiti so that we produce
         // different blocks each time.
+        // 如果我们为同一个slot生成两个blocks，它们会产生相同的值，BeaconChain会报错`BlockIsAlreadyKnown`。
+        // 改变graffiti，这样我们每次都会产生不同的blocks
         let graffiti = Graffiti::from(self.rng.lock().gen::<[u8; 32]>());
 
         let randao_reveal = self.sign_randao_reveal(&state, proposer_index, slot);
@@ -1750,7 +1752,9 @@ where
         state: BeaconState<E>,
     ) -> Result<(SignedBeaconBlockHash, SignedBeaconBlock<E>, BeaconState<E>), BlockError<E>> {
         self.set_current_slot(slot);
+        // 构建block
         let (block, new_state) = self.make_block(state, slot).await;
+        // 处理block
         let block_hash = self
             .process_block(slot, block.canonical_root(), block.clone())
             .await?;
@@ -1807,7 +1811,9 @@ where
         validators: &[usize],
         sync_committee_strategy: SyncCommitteeStrategy,
     ) -> Result<(SignedBeaconBlockHash, BeaconState<E>), BlockError<E>> {
+        // 添加block
         let (block_hash, block, state) = self.add_block_at_slot(slot, state).await?;
+        // 对block进行attest
         self.attest_block(&state, state_root, block_hash, &block, validators);
 
         if sync_committee_strategy == SyncCommitteeStrategy::AllValidators
@@ -2080,10 +2086,13 @@ where
     ///
     /// Extend the `BeaconChain` with some blocks and attestations. Returns the root of the
     /// last-produced block (the head of the chain).
+    /// 用一些blocks和attestations扩展`BeaconChain`，返回最后一个生成的block的root（链的头）
     ///
     /// Chain will be extended by `num_blocks` blocks.
+    /// 可以用`num_blocks`个blocks扩展链
     ///
     /// The `block_strategy` dictates where the new blocks will be placed.
+    /// `block_strategy`表明新的blocks将被放置在哪里
     ///
     /// The `attestation_strategy` dictates which validators will attest to the newly created
     /// blocks.

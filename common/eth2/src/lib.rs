@@ -103,6 +103,7 @@ impl fmt::Display for Error {
 
 /// A struct to define a variety of different timeouts for different validator tasks to ensure
 /// proper fallback behaviour.
+/// 一个结构定义了各种不同的超时时间，用于不同的验证器任务，以确保正确的回退行为。
 #[derive(Clone)]
 pub struct Timeouts {
     pub attestation: Duration,

@@ -229,6 +229,7 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> SignedBeaconBlock<E, Payload> 
     }
 
     /// Returns the `tree_hash_root` of the block.
+    /// 返回block的`tree_hash_root`
     pub fn canonical_root(&self) -> Hash256 {
         self.message().tree_hash_root()
     }

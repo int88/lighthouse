@@ -42,6 +42,7 @@ type E = MainnetEthSpec;
 const SECONDS_PER_SLOT: u64 = 12;
 const SLOTS_PER_EPOCH: u64 = 32;
 const VALIDATOR_COUNT: usize = SLOTS_PER_EPOCH as usize;
+// 在epoch transition运行`next_block`
 const CHAIN_LENGTH: u64 = SLOTS_PER_EPOCH * 5 - 1; // Make `next_block` an epoch transition
 const JUSTIFIED_EPOCH: u64 = 4;
 const FINALIZED_EPOCH: u64 = 3;
@@ -94,6 +95,7 @@ impl Default for ApiTesterConfig {
 impl ApiTester {
     pub async fn new() -> Self {
         // This allows for testing voluntary exits without building out a massive chain.
+        // 这允许在不构建大量链的情况下测试自愿退出。
         Self::new_from_config(ApiTesterConfig::default()).await
     }
 
@@ -111,6 +113,7 @@ impl ApiTester {
 
     pub async fn new_from_config(config: ApiTesterConfig) -> Self {
         // Get a random unused port
+        // 获取一个随机未使用的端口
         let spec = config.spec;
         let port = unused_port::unused_tcp4_port().unwrap();
         let beacon_url = SensitiveUrl::parse(format!("http://127.0.0.1:{port}").as_str()).unwrap();
@@ -132,6 +135,7 @@ impl ApiTester {
 
             if !SKIPPED_SLOTS.contains(&slot) {
                 harness
+                    // 扩展chain
                     .extend_chain(
                         1,
                         BlockStrategy::OnCanonicalHead,
@@ -156,6 +160,7 @@ impl ApiTester {
             .await;
 
         // `make_block` adds random graffiti, so this will produce an alternate block
+        // `make_block`添加随机的graffiti，因此这将产生一个替代的块
         let (reorg_block, _reorg_state) = harness
             .make_block(head.beacon_state.clone(), harness.chain.slot().unwrap())
             .await;
@@ -202,6 +207,7 @@ impl ApiTester {
             vec![]
         };
 
+        // 构建attester slashing, proposer slashing, voluntary exit
         let attester_slashing = harness.make_attester_slashing(vec![0, 1]);
         let proposer_slashing = harness.make_proposer_slashing(2);
         let voluntary_exit = harness.make_voluntary_exit(3, harness.chain.epoch().unwrap());
@@ -229,6 +235,7 @@ impl ApiTester {
 
         let log = null_logger().unwrap();
 
+        // 构建ApiServer
         let ApiServer {
             server,
             listening_socket: _,
@@ -268,6 +275,7 @@ impl ApiTester {
             network_rx,
             local_enr,
             external_peer_id,
+            // mock一个builder
             mock_builder,
         }
     }
@@ -1845,6 +1853,8 @@ impl ApiTester {
             // Presently, the beacon chain harness never runs the code that primes the proposer
             // cache. If this changes in the future then we'll need some smarter logic here, but
             // this is succinct and effective for the time being.
+            // 当前，beacon chain harness从不运行prime the proposer cache的代码。
+            // 如果将来发生变化，我们将需要一些更智能的逻辑，但是目前这是简洁而有效的。
             assert!(
                 self.chain
                     .beacon_proposer_cache
@@ -1862,6 +1872,7 @@ impl ApiTester {
 
             // Check that current-epoch requests prime the proposer cache, whilst non-current
             // requests don't.
+            // 检测current-epoch的请求预热了proposer cache，而非current-epoch的请求没有。
             if epoch == current_epoch {
                 assert!(
                     self.chain
@@ -1878,6 +1889,7 @@ impl ApiTester {
                         .lock()
                         .get_epoch::<E>(dependent_root, epoch)
                         .is_none(),
+                    // 非current-epoch的请求不应该预热proposer cache。
                     "a non-current-epoch request should not prime the proposer cache"
                 );
             }
@@ -1919,8 +1931,10 @@ impl ApiTester {
             assert_eq!(result, expected);
 
             // If it's the current epoch, check the function with a primed proposer cache.
+            // 如果是current epoch，检查函数是否预热了proposer cache。
             if epoch == current_epoch {
                 // This is technically a double-check, but it's defensive.
+                // 这事实上是一个double-check，但是它是防御性的。
                 assert!(
                     self.chain
                         .beacon_proposer_cache
@@ -1941,6 +1955,7 @@ impl ApiTester {
         }
 
         // Requests to the epochs after the next epoch should fail.
+        // 请求下一个epoch之后的epoch应该失败。
         self.client
             .get_validator_duties_proposer(current_epoch + 2)
             .await
@@ -1958,10 +1973,12 @@ impl ApiTester {
             .start_of(current_epoch.start_slot(E::slots_per_epoch()))
             .unwrap();
 
+        // 设置slot_clock
         self.chain.slot_clock.set_current_time(
             current_epoch_start - MAXIMUM_GOSSIP_CLOCK_DISPARITY - Duration::from_millis(1),
         );
 
+        // 获取dependent root
         let dependent_root = self
             .chain
             .block_root_at_slot(
@@ -1972,8 +1989,10 @@ impl ApiTester {
             .unwrap_or(self.chain.head_beacon_block_root());
 
         self.client
+            // 获取validator duties
             .get_validator_duties_proposer(current_epoch)
             .await
+            // 应该获取proposer duties，对于下一个epoch的proposer duties应该在tolerance之外
             .expect("should get proposer duties for the next epoch outside of tolerance");
 
         assert!(
@@ -1982,6 +2001,7 @@ impl ApiTester {
                 .lock()
                 .get_epoch::<E>(dependent_root, current_epoch)
                 .is_none(),
+            // 不能在tolerance之外填充proposer cache
             "should not prime the proposer cache outside of tolerance"
         );
 
@@ -2011,12 +2031,14 @@ impl ApiTester {
                 .lock()
                 .get_epoch::<E>(dependent_root, current_epoch)
                 .is_some(),
+            // 应该在torlerance之内，填充proposer cache
             "should prime the proposer cache inside the tolerance"
         );
 
         self.client
             .post_validator_duties_attester(next_epoch, &[0])
             .await
+            // 应该在torlerance之内，获取attester duties
             .expect("should get attester duties within tolerance");
 
         self
