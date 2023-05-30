@@ -797,6 +797,7 @@ impl<T: EthSpec> BeaconState<T> {
         let seed = self.get_beacon_proposer_seed(slot, spec)?;
         let indices = self.get_active_validator_indices(epoch, spec)?;
 
+        // 计算proposer index
         self.compute_proposer_index(&indices, &seed, spec)
     }
 
@@ -1434,6 +1435,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Build all committee caches, if they need to be built.
+    /// 构建所有的committee caches，如果他们需要被构建
     pub fn build_all_committee_caches(&mut self, spec: &ChainSpec) -> Result<(), Error> {
         self.build_committee_cache(RelativeEpoch::Previous, spec)?;
         self.build_committee_cache(RelativeEpoch::Current, spec)?;
@@ -1442,6 +1444,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Build the exit cache, if it needs to be built.
+    /// 构建exit cache，如果它需要被构建
     pub fn build_exit_cache(&mut self, spec: &ChainSpec) -> Result<(), Error> {
         if self.exit_cache().check_initialized().is_err() {
             *self.exit_cache_mut() = ExitCache::new(self.validators(), spec)?;
@@ -1450,6 +1453,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
     /// Drop all caches on the state.
+    /// 丢弃所有的caches，对于state
     pub fn drop_all_caches(&mut self) -> Result<(), Error> {
         self.drop_total_active_balance_cache();
         self.drop_committee_cache(RelativeEpoch::Previous)?;

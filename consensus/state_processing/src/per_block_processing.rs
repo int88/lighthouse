@@ -99,6 +99,9 @@ pub enum VerifyBlockRoot {
 /// re-calculating the root when it is already known. Note `block_root` should be equal to the
 /// tree hash root of the block, NOT the signing root of the block. This function takes
 /// care of mixing in the domain.
+/// 如果`block_root`为`Some`，这个root被用于校验proposer的signature。如果为`None`，signing root
+/// 从头开始计算。这个参数只存在于当它已经被知道时避免重新计算root。注意`block_root`应该等于
+/// block的tree hash root，而不是block的signing root。这个函数负责混入domain
 pub fn per_block_processing<T: EthSpec, Payload: AbstractExecPayload<T>>(
     state: &mut BeaconState<T>,
     signed_block: &SignedBeaconBlock<T, Payload>,
@@ -196,6 +199,7 @@ pub fn per_block_processing<T: EthSpec, Payload: AbstractExecPayload<T>>(
 }
 
 /// Processes the block header, returning the proposer index.
+/// 处理block header，返回proposer index
 pub fn process_block_header<T: EthSpec>(
     state: &mut BeaconState<T>,
     block_header: BeaconBlockHeader,
@@ -204,12 +208,14 @@ pub fn process_block_header<T: EthSpec>(
     spec: &ChainSpec,
 ) -> Result<u64, BlockOperationError<HeaderInvalid>> {
     // Verify that the slots match
+    // 校验slot匹配
     verify!(
         block_header.slot == state.slot(),
         HeaderInvalid::StateSlotMismatch
     );
 
     // Verify that the block is newer than the latest block header
+    // 校验block比最新的block header更新
     verify!(
         block_header.slot > state.latest_block_header().slot,
         HeaderInvalid::OlderThanLatestBlockHeader {
@@ -219,6 +225,7 @@ pub fn process_block_header<T: EthSpec>(
     );
 
     // Verify that proposer index is the correct index
+    // 校验proposer index是正确的index
     let proposer_index = block_header.proposer_index;
     let state_proposer_index = ctxt.get_proposer_index(state, spec)?;
     verify!(
@@ -243,6 +250,7 @@ pub fn process_block_header<T: EthSpec>(
     *state.latest_block_header_mut() = block_header;
 
     // Verify proposer is not slashed
+    // 校验proposer没有被slashed
     verify!(
         !state.get_validator(proposer_index as usize)?.slashed,
         HeaderInvalid::ProposerSlashed(proposer_index)

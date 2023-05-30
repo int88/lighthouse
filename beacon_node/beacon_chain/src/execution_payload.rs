@@ -1,11 +1,15 @@
 //! This module contains various functions for producing and verifying `ExecutionPayloads`.
+//! 这个module包含各种函数用于生成和校验`ExecutionPayloads`
 //!
 //! Lighthouse tends to do payload tasks in *slightly* different locations to the specification.
 //! This is because some tasks involve calling out to external servers and it's nice to keep those
 //! away from our pure `state_processing` and `fork_choice` crates.
+//! Lighthouse倾向于在*稍微*不同的位置做payload任务，这是因为一些任务涉及到调用外部服务器，
+//! 而且最好将它们与我们的纯`state_processing`和`fork_choice` crates分开
 //!
 //! So, this module contains functions that one might expect to find in other crates, but they live
 //! here for good reason.
+//! 因此，这个module包含函数，你可能会在其他crates中找到，但是它们在这里有很好的理由
 
 use crate::otb_verification_service::OptimisticTransitionBlock;
 use crate::{

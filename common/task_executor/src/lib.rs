@@ -277,10 +277,14 @@ impl TaskExecutor {
 
     /// Spawn a blocking task on a dedicated tokio thread pool wrapped in an exit future returning
     /// a join handle to the future.
+    /// 生成一个blocking task，包装在一个exit future中，返回一个future的join handle
     /// If the runtime doesn't exist, this will return None.
+    /// 如果runtime不存在，返回None
     /// The Future returned behaves like the standard JoinHandle which can return an error if the
     /// task failed.
+    /// Future返回的行为类似于标准的JoinHandle，如果任务失败，它可以返回一个错误
     /// This function generates prometheus metrics on number of tasks and task duration.
+    /// 这个函数生成prometheus metrics，记录任务数量和任务持续时间
     pub fn spawn_blocking_handle<F, R>(
         &self,
         task: F,

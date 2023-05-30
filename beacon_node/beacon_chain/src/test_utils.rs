@@ -87,14 +87,19 @@ pub type AddBlocksResult<E> = (
 #[derive(Clone, Copy, Debug)]
 pub enum BlockStrategy {
     /// Produce blocks upon the canonical head (normal case).
+    /// /在canonical head之上构建blocks（正常情况）
     OnCanonicalHead,
     /// Ignore the canonical head and produce blocks upon the block at the given slot.
+    /// 忽略canonical head并且在给定的slot上构建blocks
     ///
     /// Useful for simulating forks.
+    /// 对于模拟forks很有用
     ForkCanonicalChainAt {
         /// The slot of the parent of the first block produced.
+        /// 第一个构建的block的parent的slot
         previous_slot: Slot,
         /// The slot of the first block produced (must be higher than `previous_slot`.
+        /// 第一个构建的block的slot（必须高于`previous_slot`）
         first_slot: Slot,
     },
 }
@@ -205,16 +210,20 @@ impl<E: EthSpec> Builder<EphemeralHarnessType<E>> {
             .expect("should generate interop state");
             builder
                 .genesis_state(genesis_state)
+                // 应该使用最近的genesis构建state
                 .expect("should build state using recent genesis")
         };
+        // 设置store
         self.store = Some(store);
         self.store_mutator(Box::new(mutator))
     }
 
     /// Create a new ephemeral store that uses the specified `genesis_state`.
+    /// 创建一个新的ephemeral store，使用指定的`genesis_state`
     pub fn genesis_state_ephemeral_store(mut self, genesis_state: BeaconState<E>) -> Self {
         let spec = self.spec.as_ref().expect("cannot build without spec");
 
+        // 构建Hot Cold DB
         let store = Arc::new(
             HotColdDB::open_ephemeral(
                 self.store_config.clone().unwrap_or_default(),
@@ -233,6 +242,7 @@ impl<E: EthSpec> Builder<EphemeralHarnessType<E>> {
     }
 
     /// Manually restore from a given `MemoryStore`.
+    /// 手动从给定的`MemoryStore`恢复
     pub fn resumed_ephemeral_store(
         mut self,
         store: Arc<HotColdDB<E, MemoryStore<E>, MemoryStore<E>>>,
@@ -249,6 +259,7 @@ impl<E: EthSpec> Builder<EphemeralHarnessType<E>> {
 
 impl<E: EthSpec> Builder<DiskHarnessType<E>> {
     /// Disk store, start from genesis.
+    /// Disk store，从genesis开始
     pub fn fresh_disk_store(mut self, store: Arc<HotColdDB<E, LevelDB<E>, LevelDB<E>>>) -> Self {
         let validator_keypairs = self
             .validator_keypairs
@@ -273,6 +284,7 @@ impl<E: EthSpec> Builder<DiskHarnessType<E>> {
     }
 
     /// Disk store, resume.
+    /// Disk store，继续
     pub fn resumed_disk_store(mut self, store: Arc<HotColdDB<E, LevelDB<E>, LevelDB<E>>>) -> Self {
         let mutator = move |builder: BeaconChainBuilder<_>| {
             builder
@@ -589,10 +601,13 @@ where
 pub struct BeaconChainHarness<T: BeaconChainTypes> {
     pub validator_keypairs: Vec<Keypair>,
     /// Optional BLS withdrawal keys for each validator.
+    /// 可选的BLS withdrawal keys对于每个validator
     ///
     /// If a validator index is missing from this vec or their entry is `None` then either
     /// no BLS withdrawal key was set for them (they had an address from genesis) or the test
     /// initializer neglected to set this field.
+    /// 如果一个validator index在这个vec中不存在或者他们的entry是`None`，那么没有BLS withdrawal key被设置给他们
+    /// （他们有一个来自genesis的address）或者测试初始化器忽略了设置这个字段
     pub withdrawal_keypairs: Vec<Option<Keypair>>,
 
     pub chain: Arc<BeaconChain<T>>,
@@ -750,7 +765,9 @@ where
         assert_ne!(slot, 0, "can't produce a block at slot 0");
         assert!(slot >= state.slot());
 
+        // 完成state advance
         complete_state_advance(&mut state, None, slot, &self.spec)
+            // 应该将state移动到slot
             .expect("should be able to advance state to slot");
 
         state
@@ -770,6 +787,7 @@ where
 
         let (block, state) = self
             .chain
+            // 在state上构建block
             .produce_block_on_state(
                 state,
                 None,
@@ -781,6 +799,7 @@ where
             .await
             .unwrap();
 
+        // 对block进行签名
         let signed_block = block.sign(
             &self.validator_keypairs[proposer_index].sk,
             &state.fork(),
@@ -1155,8 +1174,10 @@ where
     }
 
     /// Produce exactly `limit` attestations.
+    /// 生成刚好`limit`个attestations
     ///
     /// Return attestations and vec of validator indices that attested.
+    /// 返回attestations以及attested的validator indices的vec
     pub fn make_attestations_with_limit(
         &self,
         attesting_validators: &[usize],
@@ -1182,6 +1203,7 @@ where
                 .iter()
                 .map(|committee_attestations| {
                     // If there are any attestations in this committee, create an aggregate.
+                    // 如果这个committee中有任何attestations，创建一个aggregate
                     if let Some((attestation, _)) = committee_attestations.first() {
                         let bc = state
                             .get_beacon_committee(attestation.data.slot, attestation.data.index)
@@ -1189,6 +1211,7 @@ where
 
                         // Find an aggregator if one exists. Return `None` if there are no
                         // aggregators.
+                        // 找到一个aggregator，如果存在的话，返回`None`如果没有aggregators
                         let aggregator_index = bc
                             .committee
                             .iter()
@@ -1213,6 +1236,7 @@ where
 
                         // If the chain is able to produce an aggregate, use that. Otherwise, build an
                         // aggregate locally.
+                        // 如果chain能够生成一个aggregate，使用它，否则，本地构建一个aggregate
                         let aggregate = self
                             .chain
                             .get_aggregated_attestation(&attestation.data)
@@ -1700,6 +1724,7 @@ where
         let mut unaggregated = Vec::with_capacity(num_validators);
         // This is an over-allocation, but it should be fine. It won't be *that* memory hungry and
         // it's nice to have fast tests.
+        // 因为这是一个over-allocation，但是它应该没问题，它不会*那么*内存饥饿，而且它很好地测试了。
         let mut aggregated = Vec::with_capacity(num_validators);
 
         for (unaggregated_attestations, maybe_signed_aggregate) in attestations.iter() {
@@ -1769,6 +1794,7 @@ where
         block: &SignedBeaconBlock<E>,
         validators: &[usize],
     ) {
+        // 构建attestations
         let attestations =
             self.make_attestations(validators, state, state_root, block_hash, block.slot());
         self.process_attestations(attestations);
@@ -1793,6 +1819,7 @@ where
         state_root: Hash256,
         validators: &[usize],
     ) -> Result<(SignedBeaconBlockHash, BeaconState<E>), BlockError<E>> {
+        // 添加attested block到slot，同步地方式
         self.add_attested_block_at_slot_with_sync(
             slot,
             state,
@@ -1887,8 +1914,10 @@ where
             slots.windows(2).all(|w| w[0] <= w[1]),
             "Slots have to be sorted"
         ); // slice.is_sorted() isn't stabilized at the moment of writing this
+        // 构建一个slot映射到block hash的map和slot映射到state hash的map
         let mut block_hash_from_slot: HashMap<Slot, SignedBeaconBlockHash> = HashMap::new();
         let mut state_hash_from_slot: HashMap<Slot, BeaconStateHash> = HashMap::new();
+        // 遍历slots
         for slot in slots {
             let (block_hash, new_state) = self
                 .add_attested_block_at_slot_with_sync(
@@ -1900,6 +1929,7 @@ where
                 )
                 .await
                 .unwrap();
+            // 设置新的state
             state = new_state;
             block_hash_from_slot.insert(*slot, block_hash);
             state_hash_from_slot.insert(*slot, state.tree_hash_root().into());
@@ -1914,12 +1944,16 @@ where
     }
 
     /// A monstrosity of great usefulness.
+    /// 一个非常有用的怪物
     ///
     /// Calls `add_attested_blocks_at_slots` for each of the chains in `chains`,
     /// taking care to batch blocks by epoch so that the slot clock gets advanced one
     /// epoch at a time.
+    /// 调用`add_attested_blocks_at_slots`为`chains`中的每一个chain，
+    /// 注意按照epoch批量处理blocks，以便slot clock一次前进一个epoch
     ///
     /// Chains is a vec of `(state, slots, validators)` tuples.
+    /// Chains是一个`(state, slots, validators)`元组的vec
     pub async fn add_blocks_on_multiple_chains(
         &self,
         chains: Vec<(BeaconState<E>, Vec<Slot>, Vec<usize>)>,
@@ -1973,6 +2007,7 @@ where
 
                 let head_state_root = head_state.update_tree_hash_cache().unwrap();
                 let (new_block_hashes, new_state_hashes, new_head_block, new_head_state) = self
+                    // 添加blocks
                     .add_attested_blocks_at_slots_given_lbh(
                         head_state,
                         head_state_root,
@@ -2030,6 +2065,7 @@ where
     }
 
     /// Advance the clock to `lookahead` before the start of `slot`.
+    /// 移动clock到`slot`开始的`lookahead`之前
     pub fn advance_to_slot_lookahead(&self, slot: Slot, lookahead: Duration) {
         let time = self.chain.slot_clock.start_of(slot).unwrap() - lookahead;
         self.chain.slot_clock.set_current_time(time);
@@ -2121,9 +2157,11 @@ where
         let (mut state, slots) = match block_strategy {
             BlockStrategy::OnCanonicalHead => {
                 let current_slot: u64 = self.get_current_slot().into();
+                // 收集slots和当前的state
                 let slots: Vec<Slot> = (current_slot..(current_slot + (num_blocks as u64)))
                     .map(Slot::new)
                     .collect();
+                // 获取当前的state
                 let state = self.get_current_state();
                 (state, slots)
             }
@@ -2143,11 +2181,13 @@ where
             }
         };
         let validators = match attestation_strategy {
+            // 获取所有的validators
             AttestationStrategy::AllValidators => self.get_all_validators(),
             AttestationStrategy::SomeValidators(vals) => vals,
         };
         let state_root = state.update_tree_hash_cache().unwrap();
         let (_, _, last_produced_block_hash, _) = self
+            // 添加attested block在slots
             .add_attested_blocks_at_slots_with_sync(
                 state,
                 state_root,

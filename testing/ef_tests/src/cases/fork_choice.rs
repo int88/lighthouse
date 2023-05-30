@@ -318,6 +318,7 @@ impl<E: EthSpec> Tester<E> {
 
         // Drop any blocks that might be loaded in the mock execution layer. Some of these tests
         // will provide their own blocks and we want to start from a clean state.
+        // 丢弃可能加载到模拟执行层中的任何块。这些测试中的一些将提供自己的块，我们希望从一个干净的状态开始。
         harness
             .mock_execution_layer
             .as_ref()

@@ -687,6 +687,7 @@ async fn delete_blocks_and_states() {
 }
 
 // Check that we never produce invalid blocks when there is deep forking that changes the shuffling.
+// 检查我们在deep forking的时候，不会产生无效的blocks
 // See https://github.com/sigp/lighthouse/issues/845
 async fn multi_epoch_fork_valid_blocks_test(
     initial_blocks: usize,
@@ -709,19 +710,23 @@ async fn multi_epoch_fork_valid_blocks_test(
     let num_fork2_blocks: u64 = num_fork2_blocks_.try_into().unwrap();
 
     // Create the initial portion of the chain
+    // 创建chain的初始化部分
     if initial_blocks > 0 {
         let initial_slots: Vec<Slot> = (1..=initial_blocks).map(Into::into).collect();
         let (state, state_root) = harness.get_current_state_and_root();
         let all_validators = harness.get_all_validators();
+        // 添加blocks
         harness
             .add_attested_blocks_at_slots(state, state_root, &initial_slots, &all_validators)
             .await;
     }
 
     assert!(num_fork1_validators <= LOW_VALIDATOR_COUNT);
+    // 创建fork1和fork2的validators
     let fork1_validators: Vec<usize> = (0..num_fork1_validators).collect();
     let fork2_validators: Vec<usize> = (num_fork1_validators..LOW_VALIDATOR_COUNT).collect();
 
+    // 获取当前的state
     let fork1_state = harness.get_current_state();
     let fork2_state = fork1_state.clone();
 
@@ -734,6 +739,7 @@ async fn multi_epoch_fork_valid_blocks_test(
         .collect();
 
     let results = harness
+        // 添加block到多个chains
         .add_blocks_on_multiple_chains(vec![
             (fork1_state, fork1_slots, fork1_validators),
             (fork2_state, fork2_slots, fork2_validators),
@@ -747,6 +753,7 @@ async fn multi_epoch_fork_valid_blocks_test(
 }
 
 // This is the minimal test of block production with different shufflings.
+// 这是使用不同shufflings的block production的最小测试
 #[tokio::test]
 async fn block_production_different_shuffling_early() {
     let slots_per_epoch = E::slots_per_epoch() as usize;

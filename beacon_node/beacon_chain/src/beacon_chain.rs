@@ -4342,10 +4342,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Perform the state advance and block-packing functions.
         // 执行state advance和block-packing函数
         let chain = self.clone();
+        // 获取partial beacon block
         let mut partial_beacon_block = self
             .task_executor
             .spawn_blocking_handle(
                 move || {
+                    // 构建partial block
                     chain.produce_partial_beacon_block(
                         state,
                         state_root_opt,
@@ -4365,6 +4367,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Wait for the execution layer to return an execution payload (if one is required).
         // 等待execution layer返回一个execution payload（如果需要的话）
         let prepare_payload_handle = partial_beacon_block.prepare_payload_handle.take();
+        // 构建出block contents
         let block_contents = if let Some(prepare_payload_handle) = prepare_payload_handle {
             Some(
                 prepare_payload_handle
@@ -4384,6 +4387,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         self.task_executor
             .spawn_blocking_handle(
                 move || {
+                    // 完整partial beacon block
                     chain.complete_partial_beacon_block(
                         partial_beacon_block,
                         block_contents,
@@ -4521,6 +4525,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             self.filter_op_pool_attestation(&mut curr_filter_cache, att, &state)
         };
 
+        // 获取attestations
         let mut attestations = self
             .op_pool
             .get_attestations(
@@ -4672,6 +4677,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             bls_to_execution_changes,
         } = partial_beacon_block;
 
+        // 构建inner block，根据state不同进行构建
         let inner_block = match &state {
             BeaconState::Base(_) => BeaconBlock::Base(BeaconBlockBase {
                 slot,

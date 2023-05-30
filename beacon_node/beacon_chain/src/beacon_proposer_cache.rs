@@ -171,9 +171,11 @@ pub fn compute_proposer_duties_from_head<T: BeaconChainTypes>(
             .clone_with(CloneConfig::committee_caches_only());
         let head_state_root = head.head_state_root();
         let head_block_root = head.head_block_root();
+        // 分别获取head的state，head state的root以及head block的root
         (head_state, head_state_root, head_block_root)
     };
 
+    // 获取execution status
     let execution_status = chain
         .canonical_head
         .fork_choice_read_lock()

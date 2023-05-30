@@ -307,7 +307,9 @@ impl EthSpec for MinimalEthSpec {
     type EpochsPerHistoricalVector = U64;
     type EpochsPerSlashingsVector = U64;
     type SyncCommitteeSize = U32;
+    // 32个committee size/ 4个sync committee subnet count
     type SyncSubcommitteeSize = U8; // 32 committee size / 4 sync committee subnet count
+    // 128最大的attestations * 8个slots per epoch
     type MaxPendingAttestations = U1024; // 128 max attestations * 8 slots per epoch
     type SlotsPerEth1VotingPeriod = U32; // 4 epochs * 8 slots per epoch
     type MaxWithdrawalsPerPayload = U4;

@@ -128,6 +128,7 @@ impl ApiTester {
                 .build(),
         );
 
+        // 使chain前进到epoch
         harness.advance_slot();
 
         for _ in 0..CHAIN_LENGTH {
@@ -155,6 +156,7 @@ impl ApiTester {
             "precondition: current slot is one after head"
         );
 
+        // 构建blocks
         let (next_block, _next_state) = harness
             .make_block(head.beacon_state.clone(), harness.chain.slot().unwrap())
             .await;
