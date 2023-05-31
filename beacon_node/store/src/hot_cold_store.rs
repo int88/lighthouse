@@ -846,6 +846,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
 
         for op in &batch {
             match op {
+                // Store中放入各种结构
                 StoreOp::PutBlock(block_root, block) => {
                     guard.put(*block_root, (**block).clone());
                 }

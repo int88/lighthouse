@@ -11,9 +11,11 @@ const LOOKUP_LIMIT: usize = 8;
 const METRICS_TIMEOUT: Duration = Duration::from_millis(100);
 
 /// Cache for rejecting attestations to blocks from before finalization.
+/// 缓存用于拒绝来自最终化之前的块的attestations
 ///
 /// It stores a collection of block roots that are pre-finalization and therefore not known to fork
 /// choice in `verify_head_block_is_known` during attestation processing.
+/// 它存储一系列的block roots，这些block roots是pre-finalization的，因此在attestation处理期间，fork choice不知道`verify_head_block_is_known`
 #[derive(Default)]
 pub struct PreFinalizationBlockCache {
     cache: Mutex<Cache>,

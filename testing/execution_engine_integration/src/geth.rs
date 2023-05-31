@@ -77,6 +77,7 @@ impl GenericExecutionEngine for GethEngine {
         datadir
     }
 
+    // 启动client
     fn start_client(
         datadir: &TempDir,
         http_port: u16,
@@ -102,6 +103,7 @@ impl GenericExecutionEngine for GethEngine {
             .arg(jwt_secret_path.as_path().to_str().unwrap())
             // This flag is required to help Geth perform reliably when feeding it blocks
             // one-by-one. For more information, see:
+            // 这个flag是必须的，帮助Geth在逐个提供block时可靠地执行
             //
             // https://github.com/sigp/lighthouse/pull/3382#issuecomment-1197680345
             .arg("--syncmode=full")

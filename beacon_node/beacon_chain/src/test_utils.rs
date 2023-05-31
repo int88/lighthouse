@@ -59,9 +59,11 @@ pub const HARNESS_GENESIS_TIME: u64 = 1_567_552_690;
 const FORK_NAME_ENV_VAR: &str = "FORK_NAME";
 
 // Default target aggregators to set during testing, this ensures an aggregator at each slot.
+// 默认的target aggregators，在测试期间设置，这样可以确保每个slot都有一个aggregator
 //
 // You should mutate the `ChainSpec` prior to initialising the harness if you would like to use
 // a different value.
+// 你应该调整`ChainSpec`在初始化harness之前，如果你想使用不同的值
 pub const DEFAULT_TARGET_AGGREGATORS: u64 = u64::max_value();
 
 pub type BaseHarnessType<TEthSpec, THotStore, TColdStore> =
@@ -77,9 +79,13 @@ pub type BoxedMutator<E, Hot, Cold> = Box<
 >;
 
 pub type AddBlocksResult<E> = (
+    // 添加的block hash
     HashMap<Slot, SignedBeaconBlockHash>,
+    // 添加的block state hash
     HashMap<Slot, BeaconStateHash>,
+    // 最后一个block的hash
     SignedBeaconBlockHash,
+    // 最后一个beacon state hash
     BeaconState<E>,
 );
 
@@ -128,6 +134,7 @@ pub enum SyncCommitteeStrategy {
 
 /// Indicates whether the `BeaconChainHarness` should use the `state.current_sync_committee` or
 /// `state.next_sync_committee` when creating sync messages or contributions.
+/// 表明`BeaconChainHarness`应该使用`state.current_sync_committee`还是`state.next_sync_committee`，当创建sync messages或者contributions时
 #[derive(Clone, Debug)]
 pub enum RelativeSyncCommittee {
     Current,
@@ -141,9 +148,11 @@ fn make_rng() -> Mutex<StdRng> {
 }
 
 /// Return a `ChainSpec` suitable for test usage.
+/// 对于test使用，返回一个合适的`ChainSpec`
 ///
 /// If the `fork_from_env` feature is enabled, read the fork to use from the FORK_NAME environment
 /// variable. Otherwise use the default spec.
+/// 如果`fork_from_env`特性被启用，从FORK_NAME环境变量中读取要使用的fork，否则使用默认的spec
 pub fn test_spec<E: EthSpec>() -> ChainSpec {
     let mut spec = if cfg!(feature = "fork_from_env") {
         let fork_name = std::env::var(FORK_NAME_ENV_VAR).unwrap_or_else(|e| {
@@ -159,6 +168,7 @@ pub fn test_spec<E: EthSpec>() -> ChainSpec {
     };
 
     // Set target aggregators to a high value by default.
+    // 默认将target aggregators设置为一个高值
     spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;
     spec
 }
@@ -615,7 +625,9 @@ pub struct BeaconChainHarness<T: BeaconChainTypes> {
     pub shutdown_receiver: Arc<Mutex<Receiver<ShutdownReason>>>,
     pub runtime: TestRuntime,
 
+    // 模拟的execution layer
     pub mock_execution_layer: Option<MockExecutionLayer<T::EthSpec>>,
+    // 模拟的builder
     pub mock_builder: Option<Arc<TestingBuilder<T::EthSpec>>>,
 
     pub rng: Mutex<StdRng>,
@@ -1073,6 +1085,7 @@ where
     }
 
     /// A list of sync messages for the given state.
+    /// 对于给定state的一系列sync messages
     pub fn make_sync_committee_messages(
         &self,
         state: &BeaconState<E>,
@@ -1580,8 +1593,10 @@ where
     }
 
     /// Create a new block, apply `block_modifier` to it, sign it and return it.
+    /// 创建一个新的block，应用`block_modifier`，签名并返回它
     ///
     /// The state returned is a pre-block state at the same slot as the produced block.
+    /// 返回的state是一个pre-check state，在同样的slot，作为产生的block
     pub async fn make_block_with_modifier(
         &self,
         state: BeaconState<E>,
@@ -1765,6 +1780,7 @@ where
         let epoch = slot.epoch(E::slots_per_epoch());
         assert!(
             epoch >= current_epoch,
+            // 跳回更早的epoch不是很好定义的。请按epoch-by-epoch生成测试块。
             "Jumping backwards to an earlier epoch isn't well defined. \
              Please generate test blocks epoch-by-epoch instead."
         );
@@ -2074,6 +2090,7 @@ where
     /// Deprecated: Use make_block() instead
     ///
     /// Returns a newly created block, signed by the proposer for the given slot.
+    /// 返回一个新建的block，用proposer签名，在给定的slot
     pub async fn build_block(
         &self,
         state: BeaconState<E>,
@@ -2084,6 +2101,7 @@ where
     }
 
     /// Uses `Self::extend_chain` to build the chain out to the `target_slot`.
+    /// 使用`Self::extend_chain`来构建链到`target_slot
     pub async fn extend_to_slot(&self, target_slot: Slot) -> Hash256 {
         if self.chain.slot().unwrap() == self.chain.canonical_head.cached_head().head_slot() {
             self.advance_slot();

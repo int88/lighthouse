@@ -15,6 +15,7 @@ pub const PRIVATE_KEYS: [&str; 2] = [
 ];
 
 /// Defined for each EE type (e.g., Geth, Nethermind, etc).
+/// 为每个EE类型定义（例如，Geth，Nethermind等）
 pub trait GenericExecutionEngine: Clone {
     fn init_datadir() -> TempDir;
     fn start_client(

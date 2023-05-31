@@ -119,13 +119,16 @@ pub enum StateAdvance<T: EthSpec> {
 }
 
 /// The item stored in the `SnapshotCache`.
+/// 存储在`SnapshotCache`中的item
 pub struct CacheItem<T: EthSpec> {
     beacon_block: Arc<SignedBeaconBlock<T>>,
     beacon_block_root: Hash256,
     /// This state is equivalent to `self.beacon_block.state_root()`.
+    /// 这个state和`self.beacon_block.state_root()`相等
     beacon_state: BeaconState<T>,
     /// This state is equivalent to `self.beacon_state` that has had `per_slot_processing` applied
     /// to it. This state assists in optimizing block processing.
+    /// 这个state和`self.beacon_state`相等，它已经应用了`per_slot_processing`。这个state有助于优化block处理
     pre_state: Option<BeaconState<T>>,
 }
 
@@ -140,17 +143,22 @@ impl<T: EthSpec> Into<BeaconSnapshot<T>> for CacheItem<T> {
 }
 
 /// Provides a cache of `BeaconSnapshot` that is intended primarily for block processing.
+/// 提供一个`BeaconSnapshot`的缓存，主要用于block处理
 ///
 /// ## Cache Queuing
 ///
 /// The cache has a non-standard queue mechanism (specifically, it is not LRU).
+/// 这个缓存有一个非标准的队列机制（特别是，它不是LRU）
 ///
 /// The cache has a max number of elements (`max_len`). Until `max_len` is achieved, all snapshots
 /// are simply added to the queue. Once `max_len` is achieved, adding a new snapshot will cause an
 /// existing snapshot to be ejected. The ejected snapshot will:
+/// 这个缓存有一个最大的元素数（`max_len`）。在达到`max_len`之前，所有的快照都会被添加到队列中。一旦达到`max_len`，添加一个新的快照将导致一个现有的快照被弹出。弹出的快照将：
 ///
 /// - Never be the `head_block_root`.
+/// - 不会是`head_block_root`
 /// - Be the snapshot with the lowest `state.slot` (ties broken arbitrarily).
+/// - 是`state.slot`最低的快照（ties broken arbitrarily）
 pub struct SnapshotCache<T: EthSpec> {
     max_len: usize,
     head_block_root: Hash256,

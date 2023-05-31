@@ -524,8 +524,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// 执行fork choice算法并且将结果作为canonical head
     ///
     /// This method replaces the old `BeaconChain::fork_choice` method.
+    /// 这个方法替换原来的`BeaconChain::fork_choice`方法
     pub async fn recompute_head_at_current_slot(self: &Arc<Self>) {
         match self.slot() {
+            // 重新计算head
             Ok(current_slot) => self.recompute_head_at_slot(current_slot).await,
             Err(e) => error!(
                 self.log,

@@ -420,6 +420,7 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// Used to track the heads of the beacon chain.
     pub(crate) head_tracker: Arc<HeadTracker>,
     /// A cache dedicated to block processing.
+    /// 一个缓存，专门用于block processing
     pub(crate) snapshot_cache: TimeoutRwLock<SnapshotCache<T::EthSpec>>,
     /// Caches the attester shuffling for a given epoch and shuffling key root.
     pub shuffling_cache: TimeoutRwLock<ShufflingCache>,
@@ -438,6 +439,7 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// A cache used to keep track of various block timings.
     pub block_times_cache: Arc<RwLock<BlockTimesCache>>,
     /// A cache used to track pre-finalization block roots for quick rejection.
+    /// 一个缓存用于追踪pre-finalization block roots，用于快速拒绝
     pub pre_finalization_block_cache: PreFinalizationBlockCache,
     /// Sender given to tasks, so that if they encounter a state in which execution cannot
     /// continue they can request that everything shuts down.
@@ -2709,9 +2711,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         notify_execution_layer: NotifyExecutionLayer,
     ) -> Result<Hash256, BlockError<T::EthSpec>> {
         // Start the Prometheus timer.
+        // 开启Prometheus timer
         let _full_timer = metrics::start_timer(&metrics::BLOCK_PROCESSING_TIMES);
 
         // Increment the Prometheus counter for block processing requests.
+        // 增加Prometheus counter对于block处理请求
         metrics::inc_counter(&metrics::BLOCK_PROCESSING_REQUESTS);
 
         // Clone the block so we can provide it to the event handler.
@@ -2722,12 +2726,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // 一个小的closure来将校验打包以及import errors
         let chain = self.clone();
         let import_block = async move {
+            // 转换为execution pending
             let execution_pending = unverified_block.into_execution_pending_block(
                 block_root,
                 &chain,
                 notify_execution_layer,
             )?;
             chain
+                // 在chain中导入executjion pending block
                 .import_execution_pending_block(execution_pending, count_unrealized)
                 .await
         };
@@ -2792,6 +2798,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         execution_pending_block: ExecutionPendingBlock<T>,
         count_unrealized: CountUnrealized,
     ) -> Result<Hash256, BlockError<T::EthSpec>> {
+        // 构建一个Execution Pending Block
         let ExecutionPendingBlock {
             block,
             block_root,
@@ -2812,6 +2819,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .ok_or(BeaconChainError::RuntimeShutdown)??;
 
         // Log the PoS pandas if a merge transition just occurred.
+        // 如果刚刚发生了merge transition，记录PoS pandas
         if is_valid_merge_transition_block {
             info!(self.log, "{}", POS_PANDA_BANNER);
             info!(
@@ -2845,6 +2853,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let block_hash = self
             .spawn_blocking_handle(
                 move || {
+                    // 导入block
                     chain.import_block(
                         block,
                         block_root,
@@ -2997,6 +3006,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         ) {
                             warn!(
                                 self.log,
+                                // 早期的attester cache插入失败
                                 "Early attester cache insert failed";
                                 "error" => ?e
                             );
@@ -3004,6 +3014,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     } else {
                         warn!(
                             self.log,
+                            // 早期的attester block丢失
                             "Early attester block missing";
                             "block_root" => ?block_root
                         );
@@ -3031,8 +3042,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // has already been added to fork choice and the database would be left in an inconsistent
         // state if we returned early without committing. In other words, an error here would
         // corrupt the node's database permanently.
+        // 重要的是不要在这里返回errors，在database commit之前，因为block已经被添加到fork choice
+        // database会处于不一致的状态，如果我们没有commit就提前返回，换句话说，这里的error会永久
+        // 损坏node的database
         // -----------------------------------------------------------------------------------------
 
+        // 更新shuffling cache
         self.import_block_update_shuffling_cache(block_root, &mut state);
         // 更新观察到的attestations
         self.import_block_observe_attestations(
@@ -3041,6 +3056,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             &mut consensus_context,
             current_epoch,
         );
+        // 导入block，更新validator status
         self.import_block_update_validator_monitor(
             block,
             &state,
@@ -3048,6 +3064,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             current_slot,
             parent_block.slot(),
         );
+        // 导入block，更新slasher
         self.import_block_update_slasher(block, &state, &mut consensus_context);
 
         let db_write_timer = metrics::start_timer(&metrics::BLOCK_PROCESSING_DB_WRITE);
@@ -3063,6 +3080,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .into_iter()
                 .map(StoreOp::DeleteStateTemporaryFlag),
         );
+        // 写入block
         ops.push(StoreOp::PutBlock(block_root, signed_block.clone()));
         // 写入state
         ops.push(StoreOp::PutState(block.state_root(), &state));
@@ -3113,6 +3131,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // We're declaring the block "imported" at this point, since fork choice and the DB know
         // about it.
+        // 这里我们申明block已经被导入，因为fork choice和DB知道它
         let block_time_imported = timestamp_now();
 
         let parent_root = block.parent_root();
@@ -3171,6 +3190,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         self.pre_finalization_block_cache
             .block_processed(block_root);
 
+        // 更新metrics以及events
         self.import_block_update_metrics_and_events(
             block,
             block_root,
@@ -3348,8 +3368,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Iterate through the attestations in the block and register them as "observed".
+    /// 遍历block中的attestations，并且注册它们为"observed"
     ///
     /// This will stop us from propagating them on the gossip network.
+    /// 这会阻止我们在gossip network上传播它们
     fn import_block_observe_attestations(
         &self,
         block: BeaconBlockRef<T::EthSpec>,
@@ -3359,6 +3381,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ) {
         // To avoid slowing down sync, only observe attestations if the block is from the
         // previous epoch or later.
+        // 为了避免减慢sync，只有在block来自之前的epoch或者之后的时候，才观察attestations
         if state.current_epoch() + 1 < current_epoch {
             return;
         }
@@ -3366,11 +3389,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let _timer = metrics::start_timer(&metrics::BLOCK_PROCESSING_ATTESTATION_OBSERVATION);
 
         for a in block.body().attestations() {
+            // 遍历attestations
             match self.observed_attestations.write().observe_item(a, None) {
                 // If the observation was successful or if the slot for the attestation was too
                 // low, continue.
+                // 如果observation成功，或者attestation的slot太低，继续
                 //
                 // We ignore `SlotTooLow` since this will be very common whilst syncing.
+                // 我们忽略`SlotTooLow`，因为这在sync的时候是很常见的
                 Ok(_) | Err(AttestationObservationError::SlotTooLow { .. }) => {}
                 Err(e) => {
                     debug!(
@@ -3404,6 +3430,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 {
                     debug!(
                         self.log,
+                        // 注册observed block attester失败
                         "Failed to register observed block attester";
                         "error" => ?e,
                         "epoch" => a.data.target.epoch,
@@ -3415,6 +3442,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// If a slasher is configured, provide the attestations from the block.
+    /// 如果一个slasher被配置，提供block中的attestations
     fn import_block_update_slasher(
         &self,
         block: BeaconBlockRef<T::EthSpec>,
@@ -3512,6 +3540,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     // For the current and next epoch of this state, ensure we have the shuffling from this
     // block in our cache.
+    // 对于当前以及下一个epoch的state，确保我们有来自这个block的shuffling在我们的cache中
     fn import_block_update_shuffling_cache(
         &self,
         block_root: Hash256,
@@ -3520,6 +3549,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         if let Err(e) = self.import_block_update_shuffling_cache_fallible(block_root, state) {
             warn!(
                 self.log,
+                // 预热shuffling cache失败
                 "Failed to prime shuffling cache";
                 "error" => ?e
             );
@@ -3543,6 +3573,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             if !shuffling_is_cached {
                 state.build_committee_cache(relative_epoch, &self.spec)?;
                 let committee_cache = state.committee_cache(relative_epoch)?;
+                // 尝试写入shuffling cache
                 self.shuffling_cache
                     .try_write_for(ATTESTATION_CACHE_LOCK_TIMEOUT)
                     .ok_or(Error::AttestationCacheLockTimeout)?

@@ -640,8 +640,10 @@ pub struct ExecutionPendingBlock<T: BeaconChainTypes> {
 }
 
 /// Implemented on types that can be converted into a `ExecutionPendingBlock`.
+/// 类型转换成`ExecutionPendingBlock`的实现
 ///
 /// Used to allow functions to accept blocks at various stages of verification.
+/// 用于允许函数接受各种阶段的验证的block
 pub trait IntoExecutionPendingBlock<T: BeaconChainTypes>: Sized {
     fn into_execution_pending_block(
         self,
@@ -652,6 +654,7 @@ pub trait IntoExecutionPendingBlock<T: BeaconChainTypes>: Sized {
         self.into_execution_pending_block_slashable(block_root, chain, notify_execution_layer)
             .map(|execution_pending| {
                 // Supply valid block to slasher.
+                // 提供合法的block到slasher
                 if let Some(slasher) = chain.slasher.as_ref() {
                     slasher.accept_block_header(execution_pending.block.signed_block_header());
                 }

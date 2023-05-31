@@ -1,6 +1,8 @@
 /// This binary runs integration tests between Lighthouse and execution engines.
+/// 这个二进制运行Lighthouse和execution engines之间的集成测试
 ///
 /// It will first attempt to build any supported integration clients, then it will run tests.
+/// 它会先尝试构建任何支持的集成客户端，然后运行测试
 ///
 /// A return code of `0` indicates the tests succeeded.
 mod build_utils;
